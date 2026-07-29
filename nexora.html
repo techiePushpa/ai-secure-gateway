@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nexora — Confidential AI Gateway</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          display: ['"Space Grotesk"', 'sans-serif'],
+          body: ['Inter', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'monospace'],
+        },
+        colors: {
+          indigo: { DEFAULT: '#6366F1' },
+          purple: { DEFAULT: '#A855F7' },
+          cyan:   { DEFAULT: '#22D3EE' },
+        }
+      }
+    }
+  }
+</script>
+<style>
+  :root{
+    --bg-dark:#050816;
+    --surface-dark:#0B1120;
+    --bg-light:#F8FAFC;
+    --surface-light:#FFFFFF;
+    --indigo:#6366F1;
+    --purple:#A855F7;
+    --cyan:#22D3EE;
+    --border-dark: rgba(255,255,255,0.08);
+    --border-light: rgba(15,23,42,0.08);
+  }
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg-dark);
+    font-family:'Inter',sans-serif;
+    transition:background .5s ease, color .5s ease;
+    overflow-x:hidden;
+  }
+  html.light body{ background:var(--bg-light); }
+
+  ::selection{ background: rgba(99,102,241,.35); }
+
+  /* ---------- background atmosphere ---------- */
+  .grid-glow{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(99,102,241,0.18), transparent 40%),
+      radial-gradient(circle at 85% 25%, rgba(168,85,247,0.14), transparent 45%),
+      radial-gradient(circle at 50% 80%, rgba(34,211,238,0.10), transparent 40%);
+  }
+  html.light .grid-glow{
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(99,102,241,0.10), transparent 40%),
+      radial-gradient(circle at 85% 25%, rgba(168,85,247,0.08), transparent 45%),
+      radial-gradient(circle at 50% 80%, rgba(34,211,238,0.06), transparent 40%);
+  }
+
+  /* ---------- glass ---------- */
+  .glass{
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border-dark);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  html.light .glass{
+    background: rgba(255,255,255,0.65);
+    border: 1px solid var(--border-light);
+    box-shadow: 0 8px 30px rgba(15,23,42,0.06);
+  }
+  .glass-strong{
+    background: rgba(255,255,255,0.045);
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  html.light .glass-strong{
+    background: rgba(255,255,255,0.85);
+    border: 1px solid var(--border-light);
+  }
+
+  .nav-blur{ backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+
+  /* ---------- text ---------- */
+  .text-muted{ color:#94A3B8; }
+  html.light .text-muted{ color:#475569; }
+  .text-main{ color:#E2E8F0; }
+  html.light .text-main{ color:#0F172A; }
+
+  .gradient-text{
+    background: linear-gradient(100deg, #818CF8 0%, #C084FC 50%, #22D3EE 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+
+  .card-hover{ transition: transform .4s cubic-bezier(.2,.8,.2,1), border-color .4s ease, box-shadow .4s ease; }
+  .card-hover:hover{ transform: translateY(-6px); border-color: rgba(99,102,241,0.4); box-shadow: 0 20px 60px -20px rgba(99,102,241,0.35); }
+
+  .glow-border{ position:relative; }
+  .glow-border::before{
+    content:''; position:absolute; inset:-1px; border-radius:inherit; padding:1px;
+    background: linear-gradient(120deg, rgba(99,102,241,.5), rgba(168,85,247,.5), rgba(34,211,238,.5));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    opacity:0; transition:opacity .4s ease;
+  }
+  .glow-border:hover::before{ opacity:1; }
+
+  /* ---------- reveal on scroll ---------- */
+  .reveal{ opacity:0; transform: translateY(28px); transition: opacity .8s cubic-bezier(.2,.7,.2,1), transform .8s cubic-bezier(.2,.7,.2,1); }
+  .reveal.in{ opacity:1; transform:none; }
+
+  /* ---------- signature hero element: the perimeter ring ---------- */
+  .gateway-ring{
+    position:absolute; inset:0; border-radius:9999px;
+    border: 1px dashed rgba(99,102,241,0.35);
+    animation: spin 40s linear infinite;
+  }
+  .gateway-ring.r2{ inset:34px; border-color: rgba(168,85,247,0.28); animation-duration:55s; animation-direction:reverse; }
+  .gateway-ring.r3{ inset:68px; border-color: rgba(34,211,238,0.24); animation-duration:70s; }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  .scan-line{
+    position:absolute; left:6%; right:6%; height:2px; top:50%;
+    background: linear-gradient(90deg, transparent, rgba(34,211,238,.9), transparent);
+    box-shadow: 0 0 20px 2px rgba(34,211,238,.6);
+    animation: scan 3.2s ease-in-out infinite;
+  }
+  @keyframes scan{
+    0%,100%{ top:14%; opacity:0; }
+    10%{ opacity:1; }
+    50%{ top:86%; opacity:1; }
+    60%{ opacity:0; }
+  }
+
+  .float-card{ animation: floaty 6s ease-in-out infinite; }
+  .float-card.delay-1{ animation-delay: .8s; }
+  .float-card.delay-2{ animation-delay: 1.6s; }
+  @keyframes floaty{ 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(-10px); } }
+
+  .pulse-dot{ animation: pulse-dot 2s ease-in-out infinite; }
+  @keyframes pulse-dot{ 0%,100%{ opacity:1; } 50%{ opacity:.3; } }
+
+  /* workflow line */
+  .flow-line{
+    background: linear-gradient(90deg, rgba(99,102,241,.05), rgba(99,102,241,.6), rgba(168,85,247,.6), rgba(34,211,238,.6), rgba(34,211,238,.05));
+  }
+
+  /* ripple button */
+  .btn-primary{
+    position:relative; overflow:hidden;
+    background: linear-gradient(100deg, #6366F1, #A855F7);
+    box-shadow: 0 8px 30px -8px rgba(99,102,241,.6);
+    transition: transform .3s ease, box-shadow .3s ease;
+  }
+  .btn-primary:hover{ transform: translateY(-2px); box-shadow: 0 14px 40px -8px rgba(99,102,241,.75); }
+  .btn-primary:active{ transform: translateY(0); }
+
+  .badge-chip{
+    border:1px solid var(--border-dark);
+    background: rgba(255,255,255,0.02);
+  }
+  html.light .badge-chip{ border-color: var(--border-light); background: rgba(15,23,42,0.02); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar{ width:10px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background: rgba(99,102,241,.35); border-radius:8px; }
+
+  input:focus-visible, button:focus-visible, a:focus-visible{
+    outline: 2px solid #22D3EE; outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  }
+
+  .modal-backdrop{ backdrop-filter: blur(6px); }
+</style>
+</head>
+<body class="text-main font-body relative">
+<div class="grid-glow"></div>
+
+<!-- ================= NAV ================= -->
+<header id="siteNav" class="fixed top-0 inset-x-0 z-50 transition-all duration-500">
+  <div class="max-w-7xl mx-auto px-6 lg:px-8">
+    <div class="flex items-center justify-between h-20">
+      <a href="#top" class="flex items-center gap-2.5 group">
+        <span class="relative flex h-9 w-9 items-center justify-center">
+          <svg viewBox="0 0 40 40" class="h-9 w-9">
+            <defs>
+              <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#818CF8"/>
+                <stop offset="100%" stop-color="#22D3EE"/>
+              </linearGradient>
+            </defs>
+            <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="none" stroke="url(#logoGrad)" stroke-width="2"/>
+            <circle cx="20" cy="20" r="6" fill="url(#logoGrad)" opacity="0.9"/>
+          </svg>
+        </span>
+        <span class="font-display font-semibold text-lg tracking-tight text-main">Nexora</span>
+      </a>
+
+      <nav class="hidden lg:flex items-center gap-9 font-display text-[14px] text-muted">
+        <a href="#about" class="hover:text-main transition-colors">About</a>
+        <a href="#features" class="hover:text-main transition-colors">Features</a>
+        <a href="#security" class="hover:text-main transition-colors">Security</a>
+        <a href="#models" class="hover:text-main transition-colors">Models</a>
+        <a href="#docs" class="hover:text-main transition-colors">Documentation</a>
+      </nav>
+
+      <div class="hidden lg:flex items-center gap-3">
+        <a href="#" class="p-2 rounded-lg text-muted hover:text-main transition-colors" aria-label="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.73.5.98 5.24.98 11.52c0 5.02 3.25 9.27 7.77 10.77.57.1.78-.25.78-.55v-2.06c-3.16.69-3.83-1.36-3.83-1.36-.52-1.31-1.26-1.66-1.26-1.66-1.03-.7.08-.69.08-.69 1.14.08 1.74 1.17 1.74 1.17 1.01 1.74 2.66 1.24 3.31.95.1-.73.4-1.24.72-1.53-2.52-.29-5.17-1.26-5.17-5.6 0-1.24.44-2.25 1.17-3.04-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.14 1.16a10.9 10.9 0 0 1 5.72 0c2.18-1.47 3.14-1.16 3.14-1.16.62 1.58.23 2.75.11 3.04.73.79 1.17 1.8 1.17 3.04 0 4.35-2.66 5.31-5.19 5.59.41.35.77 1.04.77 2.11v3.13c0 .3.21.66.79.55 4.51-1.51 7.76-5.76 7.76-10.77C23.02 5.24 18.27.5 12 .5z"/></svg>
+        </a>
+        <button id="themeToggle" class="p-2 rounded-lg text-muted hover:text-main transition-colors" aria-label="Toggle theme">
+          <svg id="iconMoon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          <svg id="iconSun" class="hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </button>
+        <button onclick="openModal('login')" class="text-[14px] font-display text-muted hover:text-main px-3 py-2 transition-colors">Log in</button>
+        <button onclick="openModal('signup')" class="btn-primary text-[14px] font-display font-medium text-white px-5 py-2.5 rounded-full">Sign up</button>
+      </div>
+
+      <button id="mobileMenuBtn" class="lg:hidden p-2 text-main">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="mobileMenu" class="hidden lg:hidden glass-strong mx-4 mb-3 rounded-2xl px-6 py-6 space-y-4 font-display text-sm">
+    <a href="#about" class="block text-muted">About</a>
+    <a href="#features" class="block text-muted">Features</a>
+    <a href="#security" class="block text-muted">Security</a>
+    <a href="#models" class="block text-muted">Models</a>
+    <a href="#docs" class="block text-muted">Documentation</a>
+    <div class="flex gap-3 pt-2">
+      <button onclick="openModal('login')" class="flex-1 py-2.5 rounded-full border border-white/10 text-muted">Log in</button>
+      <button onclick="openModal('signup')" class="flex-1 btn-primary text-white py-2.5 rounded-full">Sign up</button>
+    </div>
+  </div>
+</header>
+
+<!-- ================= HERO ================= -->
+<section id="top" class="relative z-10 pt-40 pb-28 px-6 lg:px-8 overflow-hidden">
+  <div class="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+    <div class="reveal">
+      <div class="inline-flex items-center gap-2 badge-chip rounded-full px-4 py-1.5 text-xs font-mono text-muted mb-7">
+        <span class="h-1.5 w-1.5 rounded-full bg-cyan pulse-dot"></span>
+        Every request inspected before it reaches a model
+      </div>
+      <h1 class="font-display text-[2.6rem] leading-[1.08] sm:text-5xl lg:text-[3.4rem] font-semibold tracking-tight text-main">
+        Secure every AI conversation<br class="hidden sm:block"> before it reaches the <span class="gradient-text">model</span>.
+      </h1>
+      <p class="mt-7 text-lg text-muted max-w-xl leading-relaxed">
+        Nexora is a self-defending confidential multimodal LLM gateway that protects sensitive AI interactions with intelligent policy enforcement, prompt security, multimodal validation, and multi-agent orchestration — before a single response is generated.
+      </p>
+      <div class="mt-10 flex flex-wrap items-center gap-4">
+        <a href="#docs" class="btn-primary text-white font-display font-medium px-7 py-3.5 rounded-full">Try Nexora</a>
+        <a href="#how" class="font-display text-sm text-muted hover:text-main transition-colors flex items-center gap-2 px-2">
+          See how it works
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
+      </div>
+      <div class="mt-12 flex items-center gap-8 font-mono text-xs text-muted">
+        <div><span class="text-main text-base font-semibold">128ms</span><br>median gateway latency</div>
+        <div class="w-px h-8 bg-white/10"></div>
+        <div><span class="text-main text-base font-semibold">7</span><br>specialized security agents</div>
+        <div class="w-px h-8 bg-white/10"></div>
+        <div><span class="text-main text-base font-semibold">100%</span><br>requests policy-checked</div>
+      </div>
+    </div>
+
+    <!-- Hero visualization: gateway rings + floating cards -->
+    <div class="reveal relative h-[460px] sm:h-[520px] flex items-center justify-center">
+      <div class="relative w-[380px] h-[380px] sm:w-[440px] sm:h-[440px]">
+        <div class="gateway-ring"></div>
+        <div class="gateway-ring r2"></div>
+        <div class="gateway-ring r3"></div>
+        <div class="scan-line"></div>
+
+        <div class="absolute inset-0 flex items-center justify-center">
+          <div class="glass-strong rounded-3xl px-6 py-5 text-center w-44 shadow-2xl">
+            <svg class="mx-auto mb-2" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#22D3EE" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-4z"/></svg>
+            <p class="font-display text-sm font-medium text-main">Security Gateway</p>
+            <p class="text-[11px] text-muted font-mono mt-1">status: active</p>
+          </div>
+        </div>
+
+        <div class="float-card absolute -top-2 -left-6 sm:left-0 glass rounded-2xl px-4 py-3 w-40">
+          <p class="text-[10px] font-mono text-cyan mb-1">AI AGENT ROUTER</p>
+          <p class="text-xs text-muted">6 agents online</p>
+        </div>
+        <div class="float-card delay-1 absolute top-8 -right-2 sm:right-0 glass rounded-2xl px-4 py-3 w-40">
+          <p class="text-[10px] font-mono text-purple mb-1">PROMPT VALIDATION</p>
+          <p class="text-xs text-muted">no anomalies found</p>
+        </div>
+        <div class="float-card delay-2 absolute bottom-6 -left-8 sm:-left-4 glass rounded-2xl px-4 py-3 w-40">
+          <p class="text-[10px] font-mono text-indigo mb-1">LLM ROUTING</p>
+          <p class="text-xs text-muted">→ Llama 3.1 8B</p>
+        </div>
+        <div class="float-card absolute -bottom-3 right-2 sm:right-4 glass rounded-2xl px-4 py-3 w-40">
+          <p class="text-[10px] font-mono text-cyan mb-1">AUDIT LOG</p>
+          <p class="text-xs text-muted">req_8841 · signed</p>
+        </div>
+        <div class="float-card delay-1 absolute top-1/2 -translate-y-1/2 -right-10 sm:-right-14 glass rounded-2xl px-3 py-2.5 w-28 text-center">
+          <p class="text-[10px] font-mono text-muted">voice · image · text</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TRUSTED TECH ================= -->
+<section class="relative z-10 py-14 border-y border-white/5">
+  <div class="max-w-7xl mx-auto px-6 lg:px-8 reveal">
+    <p class="text-center text-xs font-mono tracking-[0.2em] text-muted mb-8">POWERED BY</p>
+    <div class="flex flex-wrap justify-center gap-x-10 gap-y-5 font-display text-sm text-muted">
+      <span class="hover:text-main transition-colors">Llama 3.1 8B Instruct</span>
+      <span class="hover:text-main transition-colors">Whisper</span>
+      <span class="hover:text-main transition-colors">LLaVA</span>
+      <span class="hover:text-main transition-colors">Stable Diffusion</span>
+      <span class="hover:text-main transition-colors">LangGraph</span>
+      <span class="hover:text-main transition-colors">FastAPI</span>
+      <span class="hover:text-main transition-colors">ChromaDB</span>
+      <span class="hover:text-main transition-colors">Ollama</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= INTRODUCTION ================= -->
+<section id="about" class="relative z-10 py-28 px-6 lg:px-8">
+  <div class="max-w-5xl mx-auto text-center reveal">
+    <p class="font-mono text-xs tracking-[0.2em] text-cyan mb-4">WHAT IS NEXORA</p>
+    <h2 class="font-display text-3xl sm:text-4xl font-semibold text-main leading-tight">
+      An intelligent security layer<br class="hidden sm:block"> between people and large language models.
+    </h2>
+    <p class="mt-6 text-muted text-lg leading-relaxed max-w-3xl mx-auto">
+      Nexora sits in front of every model call. Text, voice, and image inputs pass through policy checks, prompt-injection screening, and privacy inspection before an agent ever routes the request onward — and every response is validated again before it reaches the user.
+    </p>
+  </div>
+</section>
+
+<!-- ================= WHY NEXORA MATTERS ================= -->
+<section class="relative z-10 py-24 px-6 lg:px-8">
+  <div class="max-w-7xl mx-auto">
+    <div class="reveal max-w-2xl mb-16">
+      <p class="font-mono text-xs tracking-[0.2em] text-purple mb-4">WHY NEXORA MATTERS</p>
+      <h2 class="font-display text-3xl sm:text-4xl font-semibold text-main">Modern AI systems face risks classic security tools were never built for.</h2>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <!-- risk cards -->
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <div class="h-10 w-10 rounded-xl bg-indigo/10 flex items-center justify-center mb-5">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#818CF8" stroke-width="1.8"><path d="M12 3l9 4-9 4-9-4 9-4zM3 11l9 4 9-4M3 15l9 4 9-4"/></svg>
+        </div>
+        <h3 class="font-display font-medium text-main mb-2">Prompt Injection</h3>
+        <p class="text-sm text-muted leading-relaxed">Hidden instructions crafted to hijack a model's behavior are caught by Nexora's Prompt Security Agent before they ever reach the model.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <div class="h-10 w-10 rounded-xl bg-purple/10 flex items-center justify-center mb-5">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C084FC" stroke-width="1.8"><path d="M12 2C7 2 3 6 3 11c0 5 9 11 9 11s9-6 9-11c0-5-4-9-9-9z"/><circle cx="12" cy="11" r="2.5"/></svg>
+        </div>
+        <h3 class="font-display font-medium text-main mb-2">Data Leakage</h3>
+        <p class="text-sm text-muted leading-relaxed">Confidential processing and strict session isolation keep sensitive context from surfacing in the wrong response.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <div class="h-10 w-10 rounded-xl bg-cyan/10 flex items-center justify-center mb-5">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22D3EE" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <h3 class="font-display font-medium text-main mb-2">Jailbreak Attacks</h3>
+        <p class="text-sm text-muted leading-relaxed">Policy enforcement and output validation close the loop, catching adversarial phrasing designed to bypass safety guidelines.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <div class="h-10 w-10 rounded-xl bg-indigo/10 flex items-center justify-center mb-5">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#818CF8" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+        </div>
+        <h3 class="font-display font-medium text-main mb-2">Confidential Information Exposure</h3>
+        <p class="text-sm text-muted leading-relaxed">The Privacy Agent detects and redacts sensitive identifiers before content is passed to any downstream model.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <div class="h-10 w-10 rounded-xl bg-purple/10 flex items-center justify-center mb-5">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C084FC" stroke-width="1.8"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        </div>
+        <h3 class="font-display font-medium text-main mb-2">Unsafe Image Inputs</h3>
+        <p class="text-sm text-muted leading-relaxed">Multimodal Analysis screens visual content for policy violations before LLaVA or Stable Diffusion ever process it.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <div class="h-10 w-10 rounded-xl bg-cyan/10 flex items-center justify-center mb-5">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22D3EE" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        </div>
+        <h3 class="font-display font-medium text-main mb-2">Model Abuse</h3>
+        <p class="text-sm text-muted leading-relaxed">Real-time monitoring and rate-aware routing catch abnormal usage patterns before they become an incident.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= HOW IT WORKS ================= -->
+<section id="how" class="relative z-10 py-28 px-6 lg:px-8 border-y border-white/5">
+  <div class="max-w-7xl mx-auto">
+    <div class="reveal text-center max-w-2xl mx-auto mb-20">
+      <p class="font-mono text-xs tracking-[0.2em] text-cyan mb-4">HOW NEXORA WORKS</p>
+      <h2 class="font-display text-3xl sm:text-4xl font-semibold text-main">One path. Every request checked at each stage.</h2>
+    </div>
+
+    <div class="reveal relative">
+      <div class="hidden lg:block absolute top-9 left-0 right-0 h-px flow-line"></div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-8 lg:gap-4">
+        <!-- steps -->
+        <div class="flex flex-col items-center text-center">
+          <div class="h-[72px] w-[72px] rounded-2xl glass flex items-center justify-center mb-4 relative z-10">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#818CF8" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+          </div>
+          <p class="font-display text-sm font-medium text-main">User</p>
+        </div>
+        <div class="flex flex-col items-center text-center">
+          <div class="h-[72px] w-[72px] rounded-2xl glass flex items-center justify-center mb-4 relative z-10">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#A855F7" stroke-width="1.8"><rect x="3" y="7" width="7" height="7" rx="1.5"/><circle cx="17" cy="10" r="3.5"/><path d="M4 18l4-3 4 2 4-3 4 2"/></svg>
+          </div>
+          <p class="font-display text-sm font-medium text-main">Multimodal Input</p>
+        </div>
+        <div class="flex flex-col items-center text-center">
+          <div class="h-[72px] w-[72px] rounded-2xl glass flex items-center justify-center mb-4 relative z-10">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#22D3EE" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-4z"/></svg>
+          </div>
+          <p class="font-display text-sm font-medium text-main">Security Gateway</p>
+        </div>
+        <div class="flex flex-col items-center text-center">
+          <div class="h-[72px] w-[72px] rounded-2xl glass flex items-center justify-center mb-4 relative z-10">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#818CF8" stroke-width="1.8"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8 7l3 9M16 7l-3 9M8.5 6h7"/></svg>
+          </div>
+          <p class="font-display text-sm font-medium text-main">Multi-Agent Orchestration</p>
+        </div>
+        <div class="flex flex-col items-center text-center">
+          <div class="h-[72px] w-[72px] rounded-2xl glass flex items-center justify-center mb-4 relative z-10">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#A855F7" stroke-width="1.8"><path d="M4 12h6M14 12h6M10 6l4 6-4 6"/></svg>
+          </div>
+          <p class="font-display text-sm font-medium text-main">Model Router</p>
+        </div>
+        <div class="flex flex-col items-center text-center">
+          <div class="h-[72px] w-[72px] rounded-2xl glass flex items-center justify-center mb-4 relative z-10">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#22D3EE" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></svg>
+          </div>
+          <p class="font-display text-sm font-medium text-main">LLM</p>
+        </div>
+        <div class="flex flex-col items-center text-center">
+          <div class="h-[72px] w-[72px] rounded-2xl glass flex items-center justify-center mb-4 relative z-10">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#818CF8" stroke-width="1.8"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+          </div>
+          <p class="font-display text-sm font-medium text-main">Secure Response</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= MODELS ================= -->
+<section id="models" class="relative z-10 py-28 px-6 lg:px-8">
+  <div class="max-w-7xl mx-auto">
+    <div class="reveal max-w-2xl mb-16">
+      <p class="font-mono text-xs tracking-[0.2em] text-indigo mb-4">AI MODELS</p>
+      <h2 class="font-display text-3xl sm:text-4xl font-semibold text-main">Purpose-built models, one gateway.</h2>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <p class="font-mono text-[11px] text-cyan mb-4">TEXT</p>
+        <h3 class="font-display text-lg font-medium text-main mb-2">Llama 3.1<br>8B Instruct</h3>
+        <p class="text-sm text-muted leading-relaxed">Natural language understanding and response generation.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <p class="font-mono text-[11px] text-purple mb-4">SPEECH</p>
+        <h3 class="font-display text-lg font-medium text-main mb-2">Whisper</h3>
+        <p class="text-sm text-muted leading-relaxed">Speech-to-text transcription.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <p class="font-mono text-[11px] text-indigo mb-4">VISION</p>
+        <h3 class="font-display text-lg font-medium text-main mb-2">LLaVA</h3>
+        <p class="text-sm text-muted leading-relaxed">Image understanding and visual reasoning.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <p class="font-mono text-[11px] text-cyan mb-4">GENERATION</p>
+        <h3 class="font-display text-lg font-medium text-main mb-2">Stable Diffusion</h3>
+        <p class="text-sm text-muted leading-relaxed">AI image generation.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= MULTI-AGENT ORCHESTRATION ================= -->
+<section class="relative z-10 py-28 px-6 lg:px-8 border-y border-white/5">
+  <div class="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+    <div class="reveal">
+      <p class="font-mono text-xs tracking-[0.2em] text-purple mb-4">MULTI-AGENT ORCHESTRATION</p>
+      <h2 class="font-display text-3xl sm:text-4xl font-semibold text-main mb-6">Seven specialized agents, one coordinated decision.</h2>
+      <p class="text-muted leading-relaxed mb-8">Each request is examined by a small team of purpose-built agents working in sequence and in parallel — collaborating to reach a single, auditable decision before anything reaches a model.</p>
+      <div class="grid grid-cols-2 gap-3 font-mono text-xs text-muted">
+        <div class="flex items-center gap-2"><span class="h-1.5 w-1.5 rounded-full bg-indigo"></span>Prompt Security Agent</div>
+        <div class="flex items-center gap-2"><span class="h-1.5 w-1.5 rounded-full bg-purple"></span>Privacy Agent</div>
+        <div class="flex items-center gap-2"><span class="h-1.5 w-1.5 rounded-full bg-cyan"></span>Policy Agent</div>
+        <div class="flex items-center gap-2"><span class="h-1.5 w-1.5 rounded-full bg-indigo"></span>Model Routing Agent</div>
+        <div class="flex items-center gap-2"><span class="h-1.5 w-1.5 rounded-full bg-purple"></span>Multimodal Analysis Agent</div>
+        <div class="flex items-center gap-2"><span class="h-1.5 w-1.5 rounded-full bg-cyan"></span>Output Validation Agent</div>
+        <div class="flex items-center gap-2"><span class="h-1.5 w-1.5 rounded-full bg-indigo"></span>Audit Logging Agent</div>
+      </div>
+    </div>
+    <div class="reveal relative h-[420px] flex items-center justify-center">
+      <svg viewBox="0 0 320 320" class="w-full h-full max-w-sm">
+        <g stroke="rgba(148,163,184,0.25)" stroke-width="1">
+          <line x1="160" y1="160" x2="160" y2="40"/>
+          <line x1="160" y1="160" x2="270" y2="90"/>
+          <line x1="160" y1="160" x2="280" y2="200"/>
+          <line x1="160" y1="160" x2="200" y2="290"/>
+          <line x1="160" y1="160" x2="100" y2="290"/>
+          <line x1="160" y1="160" x2="40" y2="200"/>
+          <line x1="160" y1="160" x2="50" y2="90"/>
+        </g>
+        <circle cx="160" cy="160" r="30" fill="rgba(99,102,241,0.15)" stroke="#818CF8" stroke-width="1.5"/>
+        <text x="160" y="164" text-anchor="middle" fill="#E2E8F0" font-size="9" font-family="JetBrains Mono">GATEWAY</text>
+        <g font-family="JetBrains Mono" font-size="8" fill="#94A3B8">
+          <circle cx="160" cy="40" r="16" fill="rgba(168,85,247,0.15)" stroke="#C084FC"/>
+          <circle cx="270" cy="90" r="16" fill="rgba(34,211,238,0.15)" stroke="#22D3EE"/>
+          <circle cx="280" cy="200" r="16" fill="rgba(99,102,241,0.15)" stroke="#818CF8"/>
+          <circle cx="200" cy="290" r="16" fill="rgba(168,85,247,0.15)" stroke="#C084FC"/>
+          <circle cx="100" cy="290" r="16" fill="rgba(34,211,238,0.15)" stroke="#22D3EE"/>
+          <circle cx="40" cy="200" r="16" fill="rgba(99,102,241,0.15)" stroke="#818CF8"/>
+          <circle cx="50" cy="90" r="16" fill="rgba(168,85,247,0.15)" stroke="#C084FC"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ENTERPRISE SECURITY ================= -->
+<section id="security" class="relative z-10 py-28 px-6 lg:px-8">
+  <div class="max-w-7xl mx-auto">
+    <div class="reveal max-w-2xl mb-16">
+      <p class="font-mono text-xs tracking-[0.2em] text-cyan mb-4">ENTERPRISE SECURITY</p>
+      <h2 class="font-display text-3xl sm:text-4xl font-semibold text-main">Controls that hold up to an audit.</h2>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- 12 security items -->
+      <div class="reveal glass rounded-xl p-5">
+        <p class="font-display text-sm font-medium text-main mb-1">End-to-End Secure Processing</p>
+        <p class="text-xs text-muted">Encrypted at every hop.</p>
+      </div>
+      <div class="reveal glass rounded-xl p-5">
+        <p class="font-display text-sm font-medium text-main mb-1">Prompt Injection Detection</p>
+        <p class="text-xs text-muted">Screened before routing.</p>
+      </div>
+      <div class="reveal glass rounded-xl p-5">
+        <p class="font-display text-sm font-medium text-main mb-1">PII Detection</p>
+        <p class="text-xs text-muted">Identified and redacted.</p>
+      </div>
+      <div class="reveal glass rounded-xl p-5">
+        <p class="font-display text-sm font-medium text-main mb-1">Role-Based Access Control</p>
+        <p class="text-xs text-muted">Granular permissioning.</p>
+      </div>
+      <div class="reveal glass rounded-xl p-5">
+        <p class="font-display text-sm font-medium text-main mb-1">Audit Logs</p>
+        <p class="text-xs text-muted">Signed and immutable.</p>
+      </div>
+      <div class="reveal glass rounded-xl p-5">
+        <p class="font-display text-sm font-medium text-main mb-1">Encrypted Sessions</p>
+        <p class="text-xs text-muted">Isolated per request.</p>
+      </div>
+      <div class="reveal glass rounded-xl p-5">
+        <p class="font-display text-sm font-medium text-main mb-1">Content Moderation</p>
+        <p class="text-xs text-muted">Policy-aware filtering.</p>
+      </div>
+      <div class="reveal glass rounded-xl p-5">
+        <p class="font-display text-sm font-medium text-main mb-1">Policy Enforcement</p>
+        <p class="text-xs text-muted">Configurable per tenant.</p>
+      </div>
+      <div class="reveal glass rounded-xl p-5">
+        <p class="font-display text-sm font-medium text-main mb-1">Responsible AI</p>
+        <p class="text-xs text-muted">Guardrails on output.</p>
+      </div>
+      <div class="reveal glass rounded-xl p-5">
+        <p class="font-display text-sm font-medium text-main mb-1">Model Isolation</p>
+        <p class="text-xs text-muted">No cross-session leakage.</p>
+      </div>
+      <div class="reveal glass rounded-xl p-5">
+        <p class="font-display text-sm font-medium text-main mb-1">Real-Time Monitoring</p>
+        <p class="text-xs text-muted">Live system telemetry.</p>
+      </div>
+      <div class="reveal glass rounded-xl p-5">
+        <p class="font-display text-sm font-medium text-main mb-1">Threat Detection</p>
+        <p class="text-xs text-muted">Anomalies flagged instantly.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FEATURES ================= -->
+<section id="features" class="relative z-10 py-28 px-6 lg:px-8 border-y border-white/5">
+  <div class="max-w-7xl mx-auto">
+    <div class="reveal max-w-2xl mb-16">
+      <p class="font-mono text-xs tracking-[0.2em] text-indigo mb-4">FEATURES</p>
+      <h2 class="font-display text-3xl sm:text-4xl font-semibold text-main">Everything the gateway does, at a glance.</h2>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <h3 class="font-display font-medium text-main mb-2">Confidential AI Gateway</h3>
+        <p class="text-sm text-muted">A single trusted entry point for every model call.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <h3 class="font-display font-medium text-main mb-2">Multimodal Intelligence</h3>
+        <p class="text-sm text-muted">Text, voice, and image, understood together.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <h3 class="font-display font-medium text-main mb-2">Multi-Agent Workflow</h3>
+        <p class="text-sm text-muted">Specialized agents collaborate on every decision.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <h3 class="font-display font-medium text-main mb-2">Dynamic LLM Routing</h3>
+        <p class="text-sm text-muted">Requests reach the right model automatically.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <h3 class="font-display font-medium text-main mb-2">Policy Engine</h3>
+        <p class="text-sm text-muted">Rules tuned to your organization's standards.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <h3 class="font-display font-medium text-main mb-2">Image Understanding</h3>
+        <p class="text-sm text-muted">Visual inputs screened, then interpreted.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <h3 class="font-display font-medium text-main mb-2">Voice Processing</h3>
+        <p class="text-sm text-muted">Speech transcribed securely before analysis.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <h3 class="font-display font-medium text-main mb-2">Secure Prompt Validation</h3>
+        <p class="text-sm text-muted">Injection attempts caught at the door.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <h3 class="font-display font-medium text-main mb-2">Response Guardrails</h3>
+        <p class="text-sm text-muted">Output checked before it reaches the user.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <h3 class="font-display font-medium text-main mb-2">Session Logs</h3>
+        <p class="text-sm text-muted">Every step recorded for later review.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <h3 class="font-display font-medium text-main mb-2">Scalable API Architecture</h3>
+        <p class="text-sm text-muted">Built on FastAPI for real production load.</p>
+      </div>
+      <div class="reveal glass glow-border card-hover rounded-2xl p-7">
+        <h3 class="font-display font-medium text-main mb-2">Enterprise Ready</h3>
+        <p class="text-sm text-muted">Deployable behind your own infrastructure.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DASHBOARD PREVIEW ================= -->
+<section class="relative z-10 py-28 px-6 lg:px-8">
+  <div class="max-w-7xl mx-auto">
+    <div class="reveal text-center max-w-2xl mx-auto mb-16">
+      <p class="font-mono text-xs tracking-[0.2em] text-cyan mb-4">DASHBOARD PREVIEW</p>
+      <h2 class="font-display text-3xl sm:text-4xl font-semibold text-main">Visibility into every request, always on.</h2>
+    </div>
+
+    <div class="reveal glass-strong rounded-3xl p-6 sm:p-8">
+      <div class="grid lg:grid-cols-4 gap-5 mb-6">
+        <div class="glass rounded-2xl p-5">
+          <p class="text-[11px] font-mono text-muted mb-2">SECURITY SCORE</p>
+          <p class="font-display text-3xl font-semibold text-main">98<span class="text-lg text-muted">/100</span></p>
+        </div>
+        <div class="glass rounded-2xl p-5">
+          <p class="text-[11px] font-mono text-muted mb-2">MODEL USED</p>
+          <p class="font-display text-lg font-medium text-main">Llama 3.1 8B</p>
+        </div>
+        <div class="glass rounded-2xl p-5">
+          <p class="text-[11px] font-mono text-muted mb-2">LATENCY</p>
+          <p class="font-display text-3xl font-semibold text-main">128<span class="text-lg text-muted">ms</span></p>
+        </div>
+        <div class="glass rounded-2xl p-5">
+          <p class="text-[11px] font-mono text-muted mb-2">SYSTEM HEALTH</p>
+          <p class="font-display text-lg font-medium text-cyan flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-cyan pulse-dot"></span>Operational</p>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-3 gap-5">
+        <div class="lg:col-span-2 glass rounded-2xl p-6">
+          <p class="text-[11px] font-mono text-muted mb-4">RECENT SESSIONS</p>
+          <div class="space-y-3 font-mono text-xs">
+            <div class="flex items-center justify-between text-muted border-b border-white/5 pb-3">
+              <span class="text-main">req_8841</span><span>text</span><span>Llama 3.1</span><span class="text-cyan">validated</span><span>112ms</span>
+            </div>
+            <div class="flex items-center justify-between text-muted border-b border-white/5 pb-3">
+              <span class="text-main">req_8840</span><span>image</span><span>LLaVA</span><span class="text-cyan">validated</span><span>240ms</span>
+            </div>
+            <div class="flex items-center justify-between text-muted border-b border-white/5 pb-3">
+              <span class="text-main">req_8839</span><span>voice</span><span>Whisper</span><span class="text-cyan">validated</span><span>301ms</span>
+            </div>
+            <div class="flex items-center justify-between text-muted">
+              <span class="text-main">req_8838</span><span>text</span><span>Llama 3.1</span><span class="text-purple">flagged</span><span>98ms</span>
+            </div>
+          </div>
+        </div>
+        <div class="glass rounded-2xl p-6">
+          <p class="text-[11px] font-mono text-muted mb-4">THREAT ALERTS</p>
+          <div class="space-y-4">
+            <div class="flex items-start gap-3">
+              <span class="h-1.5 w-1.5 mt-1.5 rounded-full bg-purple"></span>
+              <p class="text-xs text-muted">Prompt injection attempt blocked on <span class="text-main">req_8838</span></p>
+            </div>
+            <div class="flex items-start gap-3">
+              <span class="h-1.5 w-1.5 mt-1.5 rounded-full bg-cyan"></span>
+              <p class="text-xs text-muted">Unusual request volume from one session, throttled</p>
+            </div>
+            <div class="flex items-start gap-3">
+              <span class="h-1.5 w-1.5 mt-1.5 rounded-full bg-indigo"></span>
+              <p class="text-xs text-muted">PII pattern redacted before routing</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ABOUT ================= -->
+<section id="docs" class="relative z-10 py-28 px-6 lg:px-8 border-y border-white/5">
+  <div class="max-w-4xl mx-auto text-center reveal">
+    <p class="font-mono text-xs tracking-[0.2em] text-purple mb-4">ABOUT NEXORA</p>
+    <h2 class="font-display text-3xl sm:text-4xl font-semibold text-main mb-6">Built for trustworthy AI, at enterprise scale.</h2>
+    <p class="text-muted text-lg leading-relaxed mb-10">
+      Nexora exists to make secure AI interaction the default, not an afterthought. The platform is built around six commitments that shape every decision, from architecture to interface.
+    </p>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm font-display text-muted">
+      <div class="glass rounded-xl py-4">Privacy</div>
+      <div class="glass rounded-xl py-4">Transparency</div>
+      <div class="glass rounded-xl py-4">Responsible AI</div>
+      <div class="glass rounded-xl py-4">Security</div>
+      <div class="glass rounded-xl py-4">Innovation</div>
+      <div class="glass rounded-xl py-4">Scalability</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CTA ================= -->
+<section class="relative z-10 py-28 px-6 lg:px-8">
+  <div class="max-w-4xl mx-auto text-center reveal glass-strong rounded-3xl px-8 py-16">
+    <h2 class="font-display text-3xl sm:text-4xl font-semibold text-main mb-5">Put a gateway in front of your models.</h2>
+    <p class="text-muted mb-9 max-w-lg mx-auto">Start validating every request before it reaches a model — text, voice, and image, from day one.</p>
+    <button onclick="openModal('signup')" class="btn-primary text-white font-display font-medium px-8 py-3.5 rounded-full">Try Nexora</button>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer class="relative z-10 px-6 lg:px-8 pt-16 pb-10 border-t border-white/5">
+  <div class="max-w-7xl mx-auto">
+    <div class="grid sm:grid-cols-2 lg:grid-cols-5 gap-10 mb-14">
+      <div class="lg:col-span-2">
+        <div class="flex items-center gap-2.5 mb-4">
+          <svg viewBox="0 0 40 40" class="h-8 w-8">
+            <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="none" stroke="#818CF8" stroke-width="2"/>
+            <circle cx="20" cy="20" r="6" fill="#22D3EE" opacity="0.9"/>
+          </svg>
+          <span class="font-display font-semibold text-main">Nexora</span>
+        </div>
+        <p class="text-sm text-muted max-w-xs leading-relaxed">A self-defending confidential multimodal LLM gateway with multi-agent orchestration.</p>
+        <div class="flex gap-3 mt-6">
+          <a href="#" class="p-2 rounded-lg glass text-muted hover:text-main transition-colors" aria-label="GitHub">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.73.5.98 5.24.98 11.52c0 5.02 3.25 9.27 7.77 10.77.57.1.78-.25.78-.55v-2.06c-3.16.69-3.83-1.36-3.83-1.36-.52-1.31-1.26-1.66-1.26-1.66-1.03-.7.08-.69.08-.69 1.14.08 1.74 1.17 1.74 1.17 1.01 1.74 2.66 1.24 3.31.95.1-.73.4-1.24.72-1.53-2.52-.29-5.17-1.26-5.17-5.6 0-1.24.44-2.25 1.17-3.04-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.14 1.16a10.9 10.9 0 0 1 5.72 0c2.18-1.47 3.14-1.16 3.14-1.16.62 1.58.23 2.75.11 3.04.73.79 1.17 1.8 1.17 3.04 0 4.35-2.66 5.31-5.19 5.59.41.35.77 1.04.77 2.11v3.13c0 .3.21.66.79.55 4.51-1.51 7.76-5.76 7.76-10.77C23.02 5.24 18.27.5 12 .5z"/></svg>
+          </a>
+          <a href="#" class="p-2 rounded-lg glass text-muted hover:text-main transition-colors" aria-label="X">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 2H22l-7.6 8.7L23.3 22h-7.1l-5.6-7-6.4 7H1l8.1-9.3L.9 2h7.3l5 6.3L18.9 2zm-1.2 18h1.9L7.4 4H5.4l12.3 16z"/></svg>
+          </a>
+          <a href="#" class="p-2 rounded-lg glass text-muted hover:text-main transition-colors" aria-label="LinkedIn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M4.98 3.5C4.98 4.88 3.9 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM.24 8.25h4.5V23H.24V8.25zM8.5 8.25h4.3v2.02h.06c.6-1.14 2.07-2.34 4.26-2.34 4.56 0 5.4 3 5.4 6.9V23h-4.5v-6.98c0-1.66-.03-3.8-2.32-3.8-2.32 0-2.68 1.8-2.68 3.68V23h-4.5V8.25z"/></svg>
+          </a>
+        </div>
+      </div>
+      <div>
+        <p class="font-display text-sm font-medium text-main mb-4">Product</p>
+        <ul class="space-y-3 text-sm text-muted">
+          <li><a href="#features" class="hover:text-main transition-colors">Features</a></li>
+          <li><a href="#models" class="hover:text-main transition-colors">Models</a></li>
+          <li><a href="#" class="hover:text-main transition-colors">Pricing</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="font-display text-sm font-medium text-main mb-4">Security</p>
+        <ul class="space-y-3 text-sm text-muted">
+          <li><a href="#security" class="hover:text-main transition-colors">Enterprise Security</a></li>
+          <li><a href="#" class="hover:text-main transition-colors">Trust Center</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="font-display text-sm font-medium text-main mb-4">Documentation</p>
+        <ul class="space-y-3 text-sm text-muted">
+          <li><a href="#" class="hover:text-main transition-colors">Getting Started</a></li>
+          <li><a href="#" class="hover:text-main transition-colors">API Reference</a></li>
+          <li><a href="#" class="hover:text-main transition-colors">GitHub</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-white/5 text-xs text-muted">
+      <p>© 2026 Nexora. All rights reserved.</p>
+      <div class="flex gap-6">
+        <a href="#" class="hover:text-main transition-colors">Privacy Policy</a>
+        <a href="#" class="hover:text-main transition-colors">Terms of Service</a>
+        <a href="#" class="hover:text-main transition-colors">Contact</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ================= AUTH MODAL ================= -->
+<div id="authModal" class="fixed inset-0 z-[100] hidden items-center justify-center px-4 modal-backdrop bg-black/50">
+  <div class="glass-strong rounded-3xl w-full max-w-md p-8 sm:p-10 relative">
+    <button onclick="closeModal()" class="absolute top-5 right-5 text-muted hover:text-main" aria-label="Close">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+
+    <!-- LOGIN -->
+    <div id="loginForm">
+      <h3 class="font-display text-2xl font-semibold text-main mb-1">Welcome back</h3>
+      <p class="text-sm text-muted mb-7">Log in to your Nexora account</p>
+      <form class="space-y-4" onsubmit="return false;">
+        <div>
+          <label class="block text-xs font-mono text-muted mb-2">EMAIL</label>
+          <input type="email" placeholder="you@company.com" class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-main placeholder:text-muted/60 focus:border-indigo/60 outline-none transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs font-mono text-muted mb-2">PASSWORD</label>
+          <div class="relative">
+            <input id="loginPw" type="password" placeholder="••••••••" class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 pr-11 text-sm text-main placeholder:text-muted/60 focus:border-indigo/60 outline-none transition-colors" />
+            <button type="button" onclick="togglePw('loginPw', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-main">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between text-xs">
+          <label class="flex items-center gap-2 text-muted">
+            <input type="checkbox" class="rounded border-white/20 bg-white/5" /> Remember me
+          </label>
+          <a href="#" class="text-cyan hover:underline">Forgot password?</a>
+        </div>
+        <button class="btn-primary w-full text-white font-display font-medium py-3 rounded-full mt-2">Log in</button>
+      </form>
+      <div class="flex items-center gap-3 my-6">
+        <div class="h-px flex-1 bg-white/10"></div>
+        <span class="text-xs text-muted">or continue with</span>
+        <div class="h-px flex-1 bg-white/10"></div>
+      </div>
+      <button class="w-full flex items-center justify-center gap-2 border border-white/10 rounded-full py-3 text-sm text-main hover:bg-white/5 transition-colors">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.4c-.3 1.5-1.1 2.7-2.4 3.5v2.9h3.9c2.3-2.1 3.6-5.2 3.6-8.6z"/><path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.9-2.9c-1.1.7-2.4 1.1-4 1.1-3.1 0-5.7-2.1-6.6-4.9H1.4v3C3.4 21.3 7.4 24 12 24z"/><path fill="#FBBC05" d="M5.4 14.4c-.2-.7-.4-1.4-.4-2.4s.1-1.7.4-2.4V6.6H1.4C.5 8.3 0 10.1 0 12s.5 3.7 1.4 5.4l4-3z"/><path fill="#EA4335" d="M12 4.8c1.7 0 3.3.6 4.5 1.7l3.4-3.4C17.9 1.2 15.2 0 12 0 7.4 0 3.4 2.7 1.4 6.6l4 3c.9-2.8 3.5-4.8 6.6-4.8z"/></svg>
+        Continue with Google
+      </button>
+      <p class="text-center text-sm text-muted mt-7">Don't have an account? <button onclick="openModal('signup')" class="text-cyan hover:underline">Sign up</button></p>
+    </div>
+
+    <!-- SIGNUP -->
+    <div id="signupForm" class="hidden">
+      <h3 class="font-display text-2xl font-semibold text-main mb-1">Create your account</h3>
+      <p class="text-sm text-muted mb-7">Start securing your AI traffic with Nexora</p>
+      <form class="space-y-4" onsubmit="return false;">
+        <div>
+          <label class="block text-xs font-mono text-muted mb-2">FULL NAME</label>
+          <input type="text" placeholder="Jordan Lee" class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-main placeholder:text-muted/60 focus:border-indigo/60 outline-none transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs font-mono text-muted mb-2">EMAIL</label>
+          <input type="email" placeholder="you@company.com" class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-main placeholder:text-muted/60 focus:border-indigo/60 outline-none transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs font-mono text-muted mb-2">PASSWORD</label>
+          <div class="relative">
+            <input id="signupPw" type="password" placeholder="••••••••" class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 pr-11 text-sm text-main placeholder:text-muted/60 focus:border-indigo/60 outline-none transition-colors" />
+            <button type="button" onclick="togglePw('signupPw', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-main">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-mono text-muted mb-2">CONFIRM PASSWORD</label>
+          <input id="signupPw2" type="password" placeholder="••••••••" class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-main placeholder:text-muted/60 focus:border-indigo/60 outline-none transition-colors" />
+          <p id="pwMatchMsg" class="text-xs mt-2 hidden"></p>
+        </div>
+        <button class="btn-primary w-full text-white font-display font-medium py-3 rounded-full mt-2">Create account</button>
+      </form>
+      <div class="flex items-center gap-3 my-6">
+        <div class="h-px flex-1 bg-white/10"></div>
+        <span class="text-xs text-muted">or continue with</span>
+        <div class="h-px flex-1 bg-white/10"></div>
+      </div>
+      <button class="w-full flex items-center justify-center gap-2 border border-white/10 rounded-full py-3 text-sm text-main hover:bg-white/5 transition-colors">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.4c-.3 1.5-1.1 2.7-2.4 3.5v2.9h3.9c2.3-2.1 3.6-5.2 3.6-8.6z"/><path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.9-2.9c-1.1.7-2.4 1.1-4 1.1-3.1 0-5.7-2.1-6.6-4.9H1.4v3C3.4 21.3 7.4 24 12 24z"/><path fill="#FBBC05" d="M5.4 14.4c-.2-.7-.4-1.4-.4-2.4s.1-1.7.4-2.4V6.6H1.4C.5 8.3 0 10.1 0 12s.5 3.7 1.4 5.4l4-3z"/><path fill="#EA4335" d="M12 4.8c1.7 0 3.3.6 4.5 1.7l3.4-3.4C17.9 1.2 15.2 0 12 0 7.4 0 3.4 2.7 1.4 6.6l4 3c.9-2.8 3.5-4.8 6.6-4.8z"/></svg>
+        Continue with Google
+      </button>
+      <p class="text-center text-sm text-muted mt-7">Already have an account? <button onclick="openModal('login')" class="text-cyan hover:underline">Log in</button></p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Theme toggle
+  const htmlEl = document.documentElement;
+  const themeToggle = document.getElementById('themeToggle');
+  const iconMoon = document.getElementById('iconMoon');
+  const iconSun = document.getElementById('iconSun');
+  function applyTheme(t){
+    if(t === 'light'){ htmlEl.classList.remove('dark'); htmlEl.classList.add('light'); iconMoon.classList.add('hidden'); iconSun.classList.remove('hidden'); }
+    else { htmlEl.classList.remove('light'); htmlEl.classList.add('dark'); iconSun.classList.add('hidden'); iconMoon.classList.remove('hidden'); }
+  }
+  applyTheme('dark');
+  themeToggle.addEventListener('click', () => {
+    const isLight = htmlEl.classList.contains('light');
+    applyTheme(isLight ? 'dark' : 'light');
+  });
+
+  // Nav blur/shrink on scroll
+  const nav = document.getElementById('siteNav');
+  window.addEventListener('scroll', () => {
+    if(window.scrollY > 24){ nav.classList.add('nav-blur'); nav.querySelector('div').style.background = htmlEl.classList.contains('light') ? 'rgba(248,250,252,0.7)' : 'rgba(5,8,22,0.6)'; }
+    else { nav.classList.remove('nav-blur'); nav.querySelector('div').style.background = 'transparent'; }
+  });
+
+  // Mobile menu
+  const mobileBtn = document.getElementById('mobileMenuBtn');
+  const mobileMenu = document.getElementById('mobileMenu');
+  mobileBtn.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+
+  // Scroll reveal
+  const revealEls = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  revealEls.forEach((el, i) => { el.style.transitionDelay = (i % 6) * 60 + 'ms'; io.observe(el); });
+
+  // Auth modal
+  const authModal = document.getElementById('authModal');
+  const loginForm = document.getElementById('loginForm');
+  const signupForm = document.getElementById('signupForm');
+  function openModal(type){
+    authModal.classList.remove('hidden');
+    authModal.classList.add('flex');
+    document.body.style.overflow = 'hidden';
+    if(type === 'signup'){ loginForm.classList.add('hidden'); signupForm.classList.remove('hidden'); }
+    else { signupForm.classList.add('hidden'); loginForm.classList.remove('hidden'); }
+  }
+  function closeModal(){
+    authModal.classList.add('hidden');
+    authModal.classList.remove('flex');
+    document.body.style.overflow = '';
+  }
+  authModal.addEventListener('click', (e) => { if(e.target === authModal) closeModal(); });
+  document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closeModal(); });
+
+  function togglePw(id, btn){
+    const input = document.getElementById(id);
+    input.type = input.type === 'password' ? 'text' : 'password';
+  }
+
+  // password match validation
+  const pw2 = document.getElementById('signupPw2');
+  const pwMsg = document.getElementById('pwMatchMsg');
+  function checkMatch(){
+    const p1 = document.getElementById('signupPw').value;
+    const p2 = pw2.value;
+    if(!p2){ pwMsg.classList.add('hidden'); return; }
+    pwMsg.classList.remove('hidden');
+    if(p1 === p2){ pwMsg.textContent = 'Passwords match'; pwMsg.className = 'text-xs mt-2 text-cyan'; }
+    else { pwMsg.textContent = 'Passwords do not match'; pwMsg.className = 'text-xs mt-2 text-purple'; }
+  }
+  pw2.addEventListener('input', checkMatch);
+  document.getElementById('signupPw').addEventListener('input', checkMatch);
+</script>
+</body>
+</html>
