@@ -197,8 +197,8 @@
         <span class="hidden sm:inline-flex items-center gap-1.5 badge-chip rounded-full px-2.5 py-1 text-[11px] font-mono text-muted border border-white/10">
           Llama 3.1 8B
         </span>
-        <span class="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-mono text-muted">
-          <span class="h-1.5 w-1.5 rounded-full bg-cyan pulse-dot"></span>Connected
+        <span class="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-mono text-muted" title="Nexora Gateway backend status">
+          <span id="connDot" class="h-1.5 w-1.5 rounded-full bg-cyan pulse-dot"></span><span id="connLabel">Connecting…</span>
         </span>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
@@ -488,6 +488,7 @@ function init(){
   toggleShield(state.shieldOpen);
   const authParam = new URLSearchParams(window.location.search).get('auth');
   if(authParam === 'login' || authParam === 'signup'){ openAuth(authParam); }
+  checkBackend();
   document.addEventListener('click', (e)=>{
     ['notifDrop','profileDrop','uploadMenu'].forEach(id=>{
       const el = document.getElementById(id);
@@ -651,7 +652,8 @@ function renderMessage(m){
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-4z"/></svg>
         </div>
         <div class="min-w-0">
-          <div class="msg-bubble-ai rounded-2xl rounded-tl-md px-4 py-3.5">
+          ${m.blocked ? `<div class="flex items-center gap-1.5 mb-1.5 text-[11px] font-mono" style="color:var(--bad)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-4z"/></svg>BLOCKED BY PROMPT SHIELD</div>` : ''}
+          <div class="msg-bubble-ai rounded-2xl rounded-tl-md px-4 py-3.5" style="${m.blocked ? 'border-color:var(--bad)' : ''}">
             <div class="prose-ai text-sm text-main">${renderMarkdown(m.text)}</div>
           </div>
           <div class="flex items-center gap-3 mt-1.5 px-1">
@@ -704,7 +706,7 @@ function autoGrow(el){ el.style.height='auto'; el.style.height = Math.min(el.scr
 function toggleSendBtn(){ document.getElementById('sendBtn').disabled = !document.getElementById('composerInput').value.trim(); }
 function onComposerKeydown(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } }
 
-function sendMessage(){
+async function sendMessage(){
   const input = document.getElementById('composerInput');
   const text = input.value.trim();
   if(!text) return;
@@ -718,25 +720,20 @@ function sendMessage(){
   input.value=''; autoGrow(input); toggleSendBtn();
   renderMessages(); renderConversations();
 
-  const shield = computeShield(text);
-  state.latestShield = shield;
-  logThreat(shield);
-  renderShield();
-
   const typingMsg = { id:'typing-'+Date.now(), role:'typing' };
   conv.messages.push(typingMsg);
   renderMessages();
 
-  setTimeout(()=>{
-    conv.messages = conv.messages.filter(m=>m.role!=='typing');
-    const reply = { id:'m'+Date.now(), role:'assistant', text: generateReply(text, conv), ts: Date.now(), liked:null };
-    conv.messages.push(reply);
-    conv.updated = Date.now();
-    renderMessages(); renderConversations();
-  }, 1100 + Math.random()*700);
+  const { text: replyText, blocked } = await produceAssistantReply(text, conv);
+
+  conv.messages = conv.messages.filter(m=>m.role!=='typing');
+  const reply = { id:'m'+Date.now(), role:'assistant', text: replyText, ts: Date.now(), liked:null, blocked };
+  conv.messages.push(reply);
+  conv.updated = Date.now();
+  renderMessages(); renderConversations();
 }
 
-function generateReply(userText, conv){
+function generateReplyLocal(userText, conv){
   const isFirst = conv.messages.filter(m=>m.role==='assistant').length === 0;
   if(isFirst){
     return `Here's an initial pass on **"${userText.length>60?userText.slice(0,60)+'…':userText}"**.
@@ -764,16 +761,17 @@ function copyMsg(id){
   navigator.clipboard?.writeText(m.text).catch(()=>{});
   showToast('Copied to clipboard');
 }
-function regenerate(id){
+async function regenerate(id){
   const conv = activeConv();
   const idx = conv.messages.findIndex(x=>x.id===id);
   if(idx<0) return;
+  const priorUser = [...conv.messages.slice(0, idx)].reverse().find(m=>m.role==='user');
+  const sourceText = priorUser ? priorUser.text : 'regenerate';
   conv.messages[idx] = { id:'typing-'+Date.now(), role:'typing' };
   renderMessages();
-  setTimeout(()=>{
-    conv.messages[idx] = { id:'m'+Date.now(), role:'assistant', text: generateReply('regenerate', conv), ts: Date.now(), liked:null };
-    renderMessages();
-  }, 900);
+  const { text: replyText, blocked } = await produceAssistantReply(sourceText, conv);
+  conv.messages[idx] = { id:'m'+Date.now(), role:'assistant', text: replyText, ts: Date.now(), liked:null, blocked };
+  renderMessages();
 }
 function react(id, dir){
   const conv = activeConv(); const m = conv.messages.find(x=>x.id===id);
@@ -789,8 +787,144 @@ function editPrompt(id){
   showToast('Edit your prompt and resend');
 }
 
+/* ============================= BACKEND INTEGRATION ============================= */
+const BACKEND_URL = 'http://localhost:8000';
+let backendOnline = false;
+
+function fetchWithTimeout(url, opts, ms){
+  const controller = new AbortController();
+  const id = setTimeout(()=>controller.abort(), ms);
+  return fetch(url, Object.assign({}, opts, { signal: controller.signal })).finally(()=>clearTimeout(id));
+}
+
+async function checkBackend(){
+  try{
+    const res = await fetchWithTimeout(BACKEND_URL + '/api/health', {}, 2000);
+    backendOnline = res.ok;
+  } catch(e){
+    backendOnline = false;
+  }
+  updateConnectionUI();
+}
+
+function updateConnectionUI(){
+  const dot = document.getElementById('connDot');
+  const label = document.getElementById('connLabel');
+  if(!dot || !label) return;
+  if(backendOnline){
+    dot.style.background = 'var(--cyan)';
+    label.textContent = 'Connected';
+  } else {
+    dot.style.background = 'var(--warn)';
+    label.textContent = 'Demo mode';
+  }
+}
+
+async function callGateway(text){
+  const res = await fetchWithTimeout(BACKEND_URL + '/api/gateway', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: text, is_guest: state.isGuest, feature: 'text' }),
+  }, 6000);
+  if(!res.ok) throw new Error('gateway error ' + res.status);
+  const data = await res.json();
+  backendOnline = true;
+  updateConnectionUI();
+  return data;
+}
+
+function titleCase(s){ s = String(s||''); return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : s; }
+
+function mapBackendShield(result){
+  const ps = result.prompt_shield || {};
+  return {
+    safety: Math.max(0, 100 - (result.risk_score || 0)),
+    risk: titleCase(result.risk_level || 'SAFE'),
+    category: result.prompt_category || 'Conversation',
+    trust: ps.trust_score != null ? ps.trust_score : 90,
+    classification: result.intent || 'Informational Query',
+    pii: ps.pii_types || [],
+    threatStatus: !result.allowed ? 'Active Alert' : (ps.pii_detected ? 'Monitored' : 'None Detected'),
+    policy: ps.policy_passed ? 'Compliant' : 'Violation Flagged',
+    injection: ps.prompt_injection ? 'Detected' : 'Clear',
+    jailbreak: ps.jailbreak_detected ? 'Suspected' : 'Clear',
+    toxicity: Math.min(100, Math.round((result.risk_score || 0) * 0.5)),
+    confidence: ps.confidence != null ? ps.confidence : 90,
+    validation: result.allowed ? 'Passed' : 'Blocked',
+  };
+}
+
+const LOCAL_STAGE_LABELS = ['Receiving Prompt','Classifying Intent','Scanning for Prompt Injection','Checking Jailbreak','Scanning Sensitive Data','Masking Private Information','Policy Validation','Calculating Risk Score','Decision Engine'];
+
+function localStages(local){
+  const blocked = local.injection === 'Detected' || local.jailbreak === 'Suspected';
+  const labels = LOCAL_STAGE_LABELS.concat([blocked ? 'Unsafe → Blocked' : 'Safe → Sending to LLM']);
+  return labels.map((label,i)=>{
+    let status = 'done';
+    if(label === 'Scanning for Prompt Injection') status = local.injection === 'Detected' ? 'blocked' : 'done';
+    if(label === 'Checking Jailbreak') status = local.jailbreak === 'Suspected' ? 'blocked' : 'done';
+    if(i === labels.length-1 && blocked) status = 'blocked';
+    return { label, status };
+  });
+}
+
+function renderPipelineAnimation(stages){
+  return new Promise(resolve=>{
+    const box = document.getElementById('shieldContent');
+    if(!box || !stages.length){ resolve(); return; }
+    box.innerHTML = '<div class="glass rounded-2xl p-4 space-y-2.5">' + stages.map((s,i)=>`
+      <div id="pstage-${i}" class="flex items-center gap-2.5 text-xs text-muted opacity-30 transition-opacity duration-300">
+        <span class="h-1.5 w-1.5 rounded-full bg-white/20 shrink-0"></span><span>${s.label}</span>
+      </div>`).join('') + '</div>';
+    stages.forEach((s,i)=>{
+      setTimeout(()=>{
+        const el = document.getElementById('pstage-'+i);
+        if(!el) return;
+        el.classList.remove('opacity-30');
+        el.classList.add('text-main');
+        const dot = el.querySelector('span');
+        dot.style.background = s.status === 'blocked' ? 'var(--bad)' : 'var(--ok)';
+        if(i === stages.length-1) setTimeout(resolve, 220);
+      }, i*90);
+    });
+  });
+}
+
+async function produceAssistantReply(text, conv){
+  let result = null;
+  try{
+    result = await callGateway(text);
+  } catch(e){
+    backendOnline = false;
+    updateConnectionUI();
+  }
+
+  let stages, shieldData, replyText, blocked;
+  if(result){
+    stages = (result.stages || []).map(s=>({ label: s.label, status: s.status === 'blocked' ? 'blocked' : 'done' }));
+    shieldData = mapBackendShield(result);
+    replyText = result.final_response;
+    blocked = !result.allowed;
+  } else {
+    const local = computeShieldLocal(text);
+    stages = localStages(local);
+    shieldData = local;
+    replyText = blockedLocal(local) ? LOCAL_BLOCK_MESSAGE : generateReplyLocal(text, conv);
+    blocked = blockedLocal(local);
+  }
+
+  await renderPipelineAnimation(stages);
+  state.latestShield = shieldData;
+  logThreat(shieldData);
+  renderShield();
+  return { text: replyText, blocked };
+}
+
+function blockedLocal(local){ return local.injection === 'Detected' || local.jailbreak === 'Suspected'; }
+const LOCAL_BLOCK_MESSAGE = "We couldn't process this request because it violates Nexora's security and safety policies.\n\nThe request has been stopped before reaching the AI model. *(local demo mode — start the backend for the real pipeline)*";
+
 /* ============================= PROMPT SHIELD ============================= */
-function computeShield(text){
+function computeShieldLocal(text){
   const lower = text.toLowerCase();
   const piiHints = ['ssn','password','credit card','email:','phone number'];
   const injectionHints = ['ignore previous','system prompt','jailbreak','bypass'];
@@ -816,7 +950,7 @@ function logThreat(s){
   state.threatLog.unshift({ time: Date.now(), risk: s.risk, category: s.category });
   state.threatLog = state.threatLog.slice(0,6);
 }
-const riskColor = r => r==='High' ? 'var(--bad)' : r==='Medium' ? 'var(--warn)' : 'var(--ok)';
+const riskColor = r => { const x=(r||'').toLowerCase(); if(x==='critical'||x==='high') return 'var(--bad)'; if(x==='medium') return 'var(--warn)'; return 'var(--ok)'; };
 
 function renderShield(){
   const s = state.latestShield;
