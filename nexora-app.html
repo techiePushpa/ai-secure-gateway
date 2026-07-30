@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nexora — Chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { darkMode: 'class', theme: { extend: {
+    fontFamily: {
+      display: ['"Space Grotesk"','sans-serif'],
+      body: ['Inter','sans-serif'],
+      mono: ['"JetBrains Mono"','monospace'],
+    },
+    colors: { indigo:{DEFAULT:'#6366F1'}, purple:{DEFAULT:'#A855F7'}, cyan:{DEFAULT:'#22D3EE'} }
+  } } }
+</script>
+<style>
+  :root{
+    --bg-dark:#050816; --bg-light:#F8FAFC;
+    --indigo:#6366F1; --purple:#A855F7; --cyan:#22D3EE;
+    --ok:#34D399; --warn:#FBBF24; --bad:#FB7185;
+    --border-dark:rgba(255,255,255,.08); --border-light:rgba(15,23,42,.08);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{ background:var(--bg-dark); font-family:'Inter',sans-serif; overflow:hidden; transition:background .4s ease; }
+  html.light body{ background:var(--bg-light); }
+  ::selection{ background: rgba(99,102,241,.35); }
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background: rgba(99,102,241,.35); border-radius:8px; }
+
+  .text-muted{ color:#94A3B8; } html.light .text-muted{ color:#64748B; }
+  .text-main{ color:#E2E8F0; } html.light .text-main{ color:#0F172A; }
+
+  .glass{ background:rgba(255,255,255,.035); border:1px solid var(--border-dark); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); }
+  html.light .glass{ background:rgba(255,255,255,.75); border:1px solid var(--border-light); }
+  .glass-strong{ background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); }
+  html.light .glass-strong{ background:rgba(255,255,255,.92); border:1px solid var(--border-light); }
+  .surface{ background:rgba(255,255,255,.02); } html.light .surface{ background:rgba(15,23,42,.02); }
+
+  .gradient-text{ background:linear-gradient(100deg,#818CF8 0%,#C084FC 50%,#22D3EE 100%); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .btn-primary{ background:linear-gradient(100deg,#6366F1,#A855F7); box-shadow:0 8px 24px -8px rgba(99,102,241,.6); transition:transform .25s ease, box-shadow .25s ease; }
+  .btn-primary:hover{ transform:translateY(-1px); box-shadow:0 12px 30px -8px rgba(99,102,241,.7); }
+  .btn-primary:disabled{ opacity:.45; cursor:not-allowed; transform:none; box-shadow:none; }
+
+  .pulse-dot{ animation:pulse 2s ease-in-out infinite; } @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+  .fade-in{ animation:fadeIn .35s ease both; } @keyframes fadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+  .pop-in{ animation:popIn .2s cubic-bezier(.2,.8,.2,1) both; } @keyframes popIn{ from{opacity:0; transform:scale(.96);} to{opacity:1; transform:none;} }
+
+  #sidebar{ transition:width .35s cubic-bezier(.2,.8,.2,1); }
+  .sidebar-label{ transition:opacity .2s ease, width .2s ease; white-space:nowrap; overflow:hidden; }
+
+  .msg-bubble-user{ background:linear-gradient(100deg,rgba(99,102,241,.18),rgba(168,85,247,.14)); border:1px solid rgba(99,102,241,.25); }
+  .msg-bubble-ai{ background:rgba(255,255,255,.035); border:1px solid var(--border-dark); }
+  html.light .msg-bubble-ai{ background:rgba(255,255,255,.85); border:1px solid var(--border-light); }
+
+  .prose-ai p{ margin:.5rem 0; line-height:1.7; }
+  .prose-ai ul{ margin:.5rem 0; padding-left:1.25rem; list-style:disc; }
+  .prose-ai li{ margin:.25rem 0; }
+  .prose-ai strong{ color:inherit; font-weight:700; }
+  .prose-ai code{ font-family:'JetBrains Mono',monospace; font-size:.82em; background:rgba(99,102,241,.14); padding:.1rem .35rem; border-radius:5px; }
+  .prose-ai pre{ background:#0B1120; border:1px solid var(--border-dark); border-radius:12px; padding:.9rem 1rem; overflow-x:auto; margin:.6rem 0; position:relative; }
+  html.light .prose-ai pre{ background:#0F172A; }
+  .prose-ai pre code{ background:none; padding:0; color:#E2E8F0; font-size:.8rem; }
+  .prose-ai table{ width:100%; border-collapse:collapse; margin:.6rem 0; font-size:.85rem; }
+  .prose-ai th, .prose-ai td{ border:1px solid var(--border-dark); padding:.4rem .6rem; text-align:left; }
+  html.light .prose-ai th, html.light .prose-ai td{ border-color:var(--border-light); }
+  .prose-ai th{ background:rgba(99,102,241,.1); font-family:'Space Grotesk',sans-serif; }
+
+  .typing-dot{ animation: bounce 1.2s infinite; } .typing-dot:nth-child(2){ animation-delay:.15s; } .typing-dot:nth-child(3){ animation-delay:.3s; }
+  @keyframes bounce{ 0%,60%,100%{ transform:translateY(0); opacity:.4; } 30%{ transform:translateY(-4px); opacity:1; } }
+
+  .lock-badge{ position:absolute; top:-4px; right:-4px; background:#0B1120; border-radius:9999px; padding:2px; }
+
+  .switch{ width:38px; height:22px; border-radius:9999px; background:rgba(148,163,184,.3); position:relative; cursor:pointer; transition:background .25s ease; flex-shrink:0; }
+  .switch.on{ background:linear-gradient(100deg,#6366F1,#A855F7); }
+  .switch .dot{ position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:9999px; background:#fff; transition:transform .25s ease; }
+  .switch.on .dot{ transform:translateX(16px); }
+
+  .tab-item{ transition:background .2s ease, color .2s ease; }
+  .tab-item.active{ background:rgba(99,102,241,.14); color:#818CF8; }
+
+  input[type=text], input[type=email], input[type=password], textarea, select{
+    background:rgba(255,255,255,.04); border:1px solid var(--border-dark); color:inherit;
+  }
+  html.light input[type=text], html.light input[type=email], html.light input[type=password], html.light textarea, html.light select{
+    background:rgba(15,23,42,.03); border:1px solid var(--border-light);
+  }
+  input:focus, textarea:focus, select:focus{ outline:2px solid #22D3EE; outline-offset:1px; }
+
+  .backdrop{ backdrop-filter:blur(6px); background:rgba(0,0,0,.5); }
+
+  @media (max-width:1024px){
+    #shieldPanel{ position:fixed; right:0; top:0; bottom:0; width:88%; max-width:380px; z-index:40; transform:translateX(100%); }
+    #shieldPanel.open{ transform:translateX(0); }
+  }
+  @media (max-width:768px){
+    #sidebar{ position:fixed; left:0; top:0; bottom:0; z-index:40; width:280px !important; transform:translateX(-100%); }
+    #sidebar.open{ transform:translateX(0); }
+  }
+</style>
+</head>
+<body class="text-main">
+
+<div id="app" class="flex h-screen w-screen relative">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside id="sidebar" class="glass-strong flex flex-col h-full w-[276px] shrink-0 border-r border-white/5 relative z-30">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-4 h-16 shrink-0">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <svg viewBox="0 0 40 40" class="h-8 w-8 shrink-0">
+          <defs><linearGradient id="lg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#818CF8"/><stop offset="100%" stop-color="#22D3EE"/></linearGradient></defs>
+          <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="none" stroke="url(#lg1)" stroke-width="2"/>
+          <circle cx="20" cy="20" r="6" fill="url(#lg1)" opacity=".9"/>
+        </svg>
+        <span class="sidebar-label font-display font-semibold text-[15px] text-main">Nexora</span>
+      </div>
+      <button onclick="closeMobileSidebar()" class="md:hidden p-1.5 text-muted" aria-label="Close menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- New chat + search -->
+    <div class="px-3 space-y-2 mb-2">
+      <button onclick="newChat()" class="w-full flex items-center gap-2.5 btn-primary text-white rounded-xl px-3.5 py-2.5 font-display text-sm font-medium">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+        <span class="sidebar-label">New Chat</span>
+      </button>
+      <div class="relative">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="searchChats" oninput="renderConversations()" type="text" placeholder="Search chats" class="sidebar-label w-full rounded-lg pl-9 pr-3 py-2 text-xs placeholder:text-muted/70" />
+      </div>
+    </div>
+
+    <!-- Conversation list -->
+    <div id="convList" class="flex-1 overflow-y-auto px-3 space-y-0.5 min-h-0"></div>
+
+    <!-- Prompt Shield mini card -->
+    <div class="px-3 py-3">
+      <button onclick="toggleShield(true)" class="w-full glass rounded-xl p-3 flex items-center gap-3 text-left hover:border-indigo/40 transition-colors group">
+        <div class="relative shrink-0">
+          <svg width="34" height="34" viewBox="0 0 36 36" class="-rotate-90">
+            <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(148,163,184,.2)" stroke-width="4"/>
+            <circle id="miniShieldRing" cx="18" cy="18" r="15" fill="none" stroke="#34D399" stroke-width="4" stroke-linecap="round" stroke-dasharray="94" stroke-dashoffset="10"/>
+          </svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22D3EE" stroke-width="2" class="absolute inset-0 m-auto"><path d="M12 2l8 4v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-4z"/></svg>
+        </div>
+        <div class="sidebar-label min-w-0">
+          <p class="font-display text-xs font-medium text-main">Prompt Shield</p>
+          <p id="miniShieldText" class="text-[11px] text-muted font-mono">Safety 92 · Low risk</p>
+        </div>
+      </button>
+    </div>
+
+    <!-- User section -->
+    <button onclick="onUserSectionClick()" class="mx-3 mb-2 glass rounded-xl px-3 py-2.5 flex items-center gap-3 text-left hover:border-indigo/40 transition-colors">
+      <div id="userAvatar" class="h-8 w-8 rounded-full bg-gradient-to-br from-indigo to-purple flex items-center justify-center font-display text-xs font-semibold text-white shrink-0">G</div>
+      <div class="sidebar-label min-w-0">
+        <p id="userNameLbl" class="text-xs font-medium text-main truncate">Guest User</p>
+        <p id="userEmailLbl" class="text-[10px] text-muted truncate">Sign up to sync your chats</p>
+      </div>
+    </button>
+
+    <!-- Footer -->
+    <div class="px-3 pb-3 pt-1 flex items-center gap-1.5 border-t border-white/5">
+      <button onclick="openSettings('account')" class="flex-1 flex items-center gap-2 px-2.5 py-2 rounded-lg text-muted hover:text-main hover:bg-white/5 transition-colors" title="Settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <span class="sidebar-label text-xs">Settings</span>
+      </button>
+      <button onclick="toggleTheme()" class="p-2 rounded-lg text-muted hover:text-main hover:bg-white/5 transition-colors" title="Toggle theme">
+        <svg id="iconMoon2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg id="iconSun2" class="hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
+      <button onclick="toggleSidebarCollapse()" class="p-2 rounded-lg text-muted hover:text-main hover:bg-white/5 transition-colors" title="Collapse sidebar">
+        <svg id="collapseIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3v18M15 9l-3 3 3 3"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <div id="sidebarScrim" onclick="closeMobileSidebar()" class="hidden fixed inset-0 bg-black/50 z-20 md:hidden"></div>
+
+  <!-- ============ MAIN ============ -->
+  <div class="flex-1 flex flex-col min-w-0 relative">
+    <!-- Top nav -->
+    <header class="h-16 shrink-0 glass border-b border-white/5 flex items-center justify-between px-4 lg:px-6 z-10">
+      <div class="flex items-center gap-3 min-w-0">
+        <button onclick="openMobileSidebar()" class="md:hidden p-1.5 -ml-1 text-muted" aria-label="Menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <h1 id="chatTitle" class="font-display text-sm font-medium text-main truncate max-w-[180px] sm:max-w-xs">New Chat</h1>
+        <span class="hidden sm:inline-flex items-center gap-1.5 badge-chip rounded-full px-2.5 py-1 text-[11px] font-mono text-muted border border-white/10">
+          Llama 3.1 8B
+        </span>
+        <span class="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-mono text-muted">
+          <span class="h-1.5 w-1.5 rounded-full bg-cyan pulse-dot"></span>Connected
+        </span>
+      </div>
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button onclick="toggleShield()" class="p-2 rounded-lg text-muted hover:text-main hover:bg-white/5 transition-colors" title="Prompt Shield">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-4z"/></svg>
+        </button>
+        <div class="relative">
+          <button onclick="toggleDropdown('notifDrop')" class="p-2 rounded-lg text-muted hover:text-main hover:bg-white/5 transition-colors relative" title="Notifications">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8a6 6 0 1112 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 003.4 0"/></svg>
+            <span class="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-purple"></span>
+          </button>
+          <div id="notifDrop" class="hidden absolute right-0 mt-2 w-72 glass-strong rounded-2xl p-2 shadow-2xl pop-in">
+            <p class="text-[11px] font-mono text-muted px-3 py-2">NOTIFICATIONS</p>
+            <div class="px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors">
+              <p class="text-xs text-main font-medium">Security policy updated</p>
+              <p class="text-[11px] text-muted mt-0.5">Nexora tightened PII detection sensitivity.</p>
+            </div>
+            <div class="px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors">
+              <p class="text-xs text-main font-medium">New model available</p>
+              <p class="text-[11px] text-muted mt-0.5">LLaVA vision routing is now faster.</p>
+            </div>
+          </div>
+        </div>
+        <button onclick="toggleTheme()" class="p-2 rounded-lg text-muted hover:text-main hover:bg-white/5 transition-colors" title="Toggle theme">
+          <svg id="iconMoon3" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+          <svg id="iconSun3" class="hidden" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </button>
+        <div class="relative">
+          <button onclick="toggleDropdown('profileDrop')" class="h-8 w-8 rounded-full bg-gradient-to-br from-indigo to-purple flex items-center justify-center font-display text-xs font-semibold text-white" id="profileAvatarBtn">G</button>
+          <div id="profileDrop" class="hidden absolute right-0 mt-2 w-56 glass-strong rounded-2xl p-2 shadow-2xl pop-in">
+            <div id="profileDropGuest">
+              <p class="text-xs text-muted px-3 py-2 leading-relaxed">You're browsing as a guest.</p>
+              <button onclick="openAuth('login')" class="w-full text-left px-3 py-2.5 rounded-xl text-sm text-main hover:bg-white/5">Log in</button>
+              <button onclick="openAuth('signup')" class="w-full text-left px-3 py-2.5 rounded-xl text-sm gradient-text font-medium hover:bg-white/5">Sign up free</button>
+            </div>
+            <div id="profileDropUser" class="hidden">
+              <div class="px-3 py-2 border-b border-white/5 mb-1">
+                <p id="profileDropName" class="text-sm font-medium text-main">—</p>
+                <p id="profileDropEmail" class="text-[11px] text-muted">—</p>
+              </div>
+              <button onclick="openSettings('account')" class="w-full text-left px-3 py-2.5 rounded-xl text-sm text-main hover:bg-white/5">Settings</button>
+              <button onclick="logout()" class="w-full text-left px-3 py-2.5 rounded-xl text-sm text-[color:var(--bad)] hover:bg-white/5">Log out</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="flex-1 flex min-h-0 relative">
+      <!-- Chat column -->
+      <section class="flex-1 flex flex-col min-w-0">
+        <div id="messages" class="flex-1 overflow-y-auto px-4 sm:px-8 lg:px-12 py-8 space-y-6"></div>
+
+        <!-- Composer -->
+        <div class="px-4 sm:px-8 lg:px-12 pb-5 pt-2 shrink-0">
+          <div class="max-w-3xl mx-auto">
+            <div class="glass-strong rounded-3xl p-2.5 flex items-end gap-2 shadow-xl">
+              <div class="relative">
+                <button id="uploadBtn" onclick="onUploadClick()" class="p-2.5 rounded-full text-muted hover:text-main hover:bg-white/5 transition-colors relative">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                  <span id="uploadLock" class="lock-badge hidden">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.4"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+                  </span>
+                </button>
+                <div id="uploadMenu" class="hidden absolute bottom-full mb-2 left-0 w-52 glass-strong rounded-2xl p-1.5 shadow-2xl pop-in">
+                  <button onclick="mockUpload('Image')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Image</button>
+                  <button onclick="mockUpload('PDF')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>PDF</button>
+                  <button onclick="mockUpload('Word document')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Word</button>
+                  <button onclick="mockUpload('Text file')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Text</button>
+                  <button onclick="mockUpload('CSV')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg>CSV</button>
+                  <button onclick="mockUpload('Markdown file')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Markdown</button>
+                </div>
+              </div>
+
+              <textarea id="composerInput" rows="1" placeholder="Ask Nexora anything..." class="flex-1 resize-none bg-transparent outline-none text-sm text-main placeholder:text-muted/70 py-2.5 max-h-40" oninput="autoGrow(this); toggleSendBtn();" onkeydown="onComposerKeydown(event)"></textarea>
+
+              <button id="micBtn" onclick="onMicClick()" class="p-2.5 rounded-full text-muted hover:text-main hover:bg-white/5 transition-colors relative">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4"/></svg>
+                <span id="micLock" class="lock-badge hidden">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.4"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+                </span>
+              </button>
+
+              <button id="sendBtn" onclick="sendMessage()" disabled class="btn-primary text-white rounded-full h-10 w-10 flex items-center justify-center shrink-0">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+            <p id="guestHint" class="text-center text-[11px] text-muted mt-2.5 font-mono">Guest mode · <button onclick="openAuth('signup')" class="text-cyan hover:underline">Sign up</button> to unlock voice, uploads &amp; chat sync</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Prompt Shield panel -->
+      <aside id="shieldPanel" class="hidden lg:flex flex-col w-[340px] shrink-0 glass border-l border-white/5 overflow-y-auto">
+        <div class="p-5 flex items-center justify-between border-b border-white/5 shrink-0">
+          <div class="flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22D3EE" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-4z"/></svg>
+            <h2 class="font-display text-sm font-semibold text-main">Prompt Shield</h2>
+          </div>
+          <button onclick="toggleShield(false)" class="p-1.5 text-muted hover:text-main"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+        </div>
+        <div id="shieldContent" class="p-5 space-y-5"></div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<!-- ============ UPSELL MODAL ============ -->
+<div id="upsellModal" class="hidden fixed inset-0 z-[90] items-center justify-center px-4 backdrop">
+  <div class="glass-strong rounded-3xl w-full max-w-sm p-8 text-center pop-in relative">
+    <button onclick="closeModal('upsellModal')" class="absolute top-4 right-4 text-muted hover:text-main"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    <div class="h-14 w-14 mx-auto rounded-2xl bg-gradient-to-br from-indigo/20 to-purple/20 flex items-center justify-center mb-5">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="url(#lg1)" stroke-width="1.8"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+    </div>
+    <h3 id="upsellTitle" class="font-display text-lg font-semibold text-main mb-2">Unlock this feature</h3>
+    <p id="upsellText" class="text-sm text-muted mb-7 leading-relaxed">Create a free Nexora account to unlock voice input, file uploads, personalization, and chat sync across devices.</p>
+    <div class="flex flex-col gap-2.5">
+      <button onclick="closeModal('upsellModal'); openAuth('signup')" class="btn-primary text-white font-display font-medium py-3 rounded-full text-sm">Sign up free</button>
+      <button onclick="closeModal('upsellModal'); openAuth('login')" class="text-sm text-muted hover:text-main py-1">I already have an account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ AUTH MODAL ============ -->
+<div id="authModal" class="hidden fixed inset-0 z-[90] items-center justify-center px-4 backdrop">
+  <div class="glass-strong rounded-3xl w-full max-w-md p-8 sm:p-10 relative pop-in">
+    <button onclick="closeModal('authModal')" class="absolute top-5 right-5 text-muted hover:text-main"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+
+    <div id="loginForm">
+      <h3 class="font-display text-2xl font-semibold text-main mb-1">Welcome back</h3>
+      <p class="text-sm text-muted mb-7">Log in to your Nexora account</p>
+      <form onsubmit="handleLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-mono text-muted mb-2">EMAIL</label>
+          <input id="loginEmail" required type="email" placeholder="you@company.com" class="w-full rounded-xl px-4 py-3 text-sm placeholder:text-muted/60" />
+        </div>
+        <div>
+          <label class="block text-xs font-mono text-muted mb-2">PASSWORD</label>
+          <div class="relative">
+            <input id="loginPw" required type="password" placeholder="••••••••" class="w-full rounded-xl px-4 py-3 pr-11 text-sm placeholder:text-muted/60" />
+            <button type="button" onclick="togglePw('loginPw')" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-main"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between text-xs">
+          <label class="flex items-center gap-2 text-muted"><input type="checkbox" class="rounded border-white/20 bg-white/5" /> Remember me</label>
+          <a href="#" class="text-cyan hover:underline">Forgot password?</a>
+        </div>
+        <button type="submit" class="btn-primary w-full text-white font-display font-medium py-3 rounded-full mt-2">Log in</button>
+      </form>
+      <div class="flex items-center gap-3 my-6"><div class="h-px flex-1 bg-white/10"></div><span class="text-xs text-muted">or continue with</span><div class="h-px flex-1 bg-white/10"></div></div>
+      <button onclick="handleLogin(null,true)" class="w-full flex items-center justify-center gap-2 border border-white/10 rounded-full py-3 text-sm text-main hover:bg-white/5 transition-colors">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.4c-.3 1.5-1.1 2.7-2.4 3.5v2.9h3.9c2.3-2.1 3.6-5.2 3.6-8.6z"/><path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.9-2.9c-1.1.7-2.4 1.1-4 1.1-3.1 0-5.7-2.1-6.6-4.9H1.4v3C3.4 21.3 7.4 24 12 24z"/><path fill="#FBBC05" d="M5.4 14.4c-.2-.7-.4-1.4-.4-2.4s.1-1.7.4-2.4V6.6H1.4C.5 8.3 0 10.1 0 12s.5 3.7 1.4 5.4l4-3z"/><path fill="#EA4335" d="M12 4.8c1.7 0 3.3.6 4.5 1.7l3.4-3.4C17.9 1.2 15.2 0 12 0 7.4 0 3.4 2.7 1.4 6.6l4 3c.9-2.8 3.5-4.8 6.6-4.8z"/></svg>
+        Continue with Google
+      </button>
+      <p class="text-center text-sm text-muted mt-7">Don't have an account? <button onclick="openAuth('signup')" class="text-cyan hover:underline">Sign up</button></p>
+    </div>
+
+    <div id="signupForm" class="hidden">
+      <h3 class="font-display text-2xl font-semibold text-main mb-1">Create your account</h3>
+      <p class="text-sm text-muted mb-7">Start securing your AI conversations</p>
+      <form onsubmit="handleSignup(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-mono text-muted mb-2">FULL NAME</label>
+          <input id="signupName" required type="text" placeholder="Jordan Lee" class="w-full rounded-xl px-4 py-3 text-sm placeholder:text-muted/60" />
+        </div>
+        <div>
+          <label class="block text-xs font-mono text-muted mb-2">EMAIL</label>
+          <input id="signupEmail" required type="email" placeholder="you@company.com" class="w-full rounded-xl px-4 py-3 text-sm placeholder:text-muted/60" />
+        </div>
+        <div>
+          <label class="block text-xs font-mono text-muted mb-2">PASSWORD</label>
+          <div class="relative">
+            <input id="signupPw" required type="password" placeholder="••••••••" class="w-full rounded-xl px-4 py-3 pr-11 text-sm placeholder:text-muted/60" />
+            <button type="button" onclick="togglePw('signupPw')" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-main"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-mono text-muted mb-2">CONFIRM PASSWORD</label>
+          <input id="signupPw2" required type="password" placeholder="••••••••" oninput="checkPwMatch()" class="w-full rounded-xl px-4 py-3 text-sm placeholder:text-muted/60" />
+          <p id="pwMatchMsg" class="text-xs mt-2 hidden"></p>
+        </div>
+        <button type="submit" class="btn-primary w-full text-white font-display font-medium py-3 rounded-full mt-2">Create account</button>
+      </form>
+      <div class="flex items-center gap-3 my-6"><div class="h-px flex-1 bg-white/10"></div><span class="text-xs text-muted">or continue with</span><div class="h-px flex-1 bg-white/10"></div></div>
+      <button onclick="handleSignup(null,true)" class="w-full flex items-center justify-center gap-2 border border-white/10 rounded-full py-3 text-sm text-main hover:bg-white/5 transition-colors">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.4c-.3 1.5-1.1 2.7-2.4 3.5v2.9h3.9c2.3-2.1 3.6-5.2 3.6-8.6z"/><path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.9-2.9c-1.1.7-2.4 1.1-4 1.1-3.1 0-5.7-2.1-6.6-4.9H1.4v3C3.4 21.3 7.4 24 12 24z"/><path fill="#FBBC05" d="M5.4 14.4c-.2-.7-.4-1.4-.4-2.4s.1-1.7.4-2.4V6.6H1.4C.5 8.3 0 10.1 0 12s.5 3.7 1.4 5.4l4-3z"/><path fill="#EA4335" d="M12 4.8c1.7 0 3.3.6 4.5 1.7l3.4-3.4C17.9 1.2 15.2 0 12 0 7.4 0 3.4 2.7 1.4 6.6l4 3c.9-2.8 3.5-4.8 6.6-4.8z"/></svg>
+        Continue with Google
+      </button>
+      <p class="text-center text-sm text-muted mt-7">Already have an account? <button onclick="openAuth('login')" class="text-cyan hover:underline">Log in</button></p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SETTINGS MODAL ============ -->
+<div id="settingsModal" class="hidden fixed inset-0 z-[90] items-center justify-center px-4 backdrop">
+  <div class="glass-strong rounded-3xl w-full max-w-3xl h-[80vh] max-h-[640px] flex overflow-hidden pop-in">
+    <div class="w-52 shrink-0 border-r border-white/5 p-3 overflow-y-auto hidden sm:block">
+      <p class="font-display text-sm font-semibold text-main px-2 py-2">Settings</p>
+      <div id="settingsTabs" class="space-y-0.5 mt-1"></div>
+    </div>
+    <div class="flex-1 flex flex-col min-w-0">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-white/5 shrink-0">
+        <h3 id="settingsTitle" class="font-display text-sm font-semibold text-main">Account</h3>
+        <button onclick="closeModal('settingsModal')" class="p-1.5 text-muted hover:text-main"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div id="settingsContent" class="flex-1 overflow-y-auto p-6 space-y-4"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CONFIRM MODAL ============ -->
+<div id="confirmModal" class="hidden fixed inset-0 z-[95] items-center justify-center px-4 backdrop">
+  <div class="glass-strong rounded-2xl w-full max-w-xs p-6 text-center pop-in">
+    <p id="confirmText" class="text-sm text-main mb-6">Are you sure?</p>
+    <div class="flex gap-3">
+      <button onclick="closeModal('confirmModal')" class="flex-1 py-2.5 rounded-full border border-white/10 text-sm text-muted hover:text-main">Cancel</button>
+      <button id="confirmActionBtn" class="flex-1 py-2.5 rounded-full bg-[color:var(--bad)] text-white text-sm font-medium">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] glass-strong rounded-full px-5 py-2.5 text-sm text-main pop-in"></div>
+
+<script>
+/* ============================= STATE ============================= */
+const state = {
+  isGuest: true,
+  user: null,
+  theme: 'dark',
+  sidebarCollapsed: false,
+  shieldOpen: window.innerWidth >= 1024,
+  activeTab: 'account',
+  conversations: [
+    { id: 'c1', title: 'Explain vector databases', pinned: true, updated: Date.now()-1000*60*40, messages: seedConvo1() },
+    { id: 'c2', title: 'Marketing copy ideas', pinned: false, updated: Date.now()-1000*60*60*5, messages: [] },
+    { id: 'c3', title: 'Debugging a FastAPI 500 error', pinned: false, updated: Date.now()-1000*60*60*26, messages: [] },
+  ],
+  activeId: null,
+  latestShield: defaultShield(),
+  threatLog: [],
+};
+
+function defaultShield(){
+  return { safety:92, risk:'Low', category:'General Assistance', trust:96, classification:'Informational Query',
+    pii:[], threatStatus:'None Detected', policy:'Compliant', injection:'Clear', jailbreak:'Clear',
+    toxicity:2, confidence:94, validation:'Passed' };
+}
+function seedConvo1(){
+  return [
+    { id:'m1', role:'user', text:'Explain vector databases like I\'m new to AI infrastructure.', ts: Date.now()-1000*60*42 },
+    { id:'m2', role:'assistant', text: `A **vector database** stores data as high-dimensional numeric vectors so you can search by *meaning* instead of exact keywords.
+
+Here's the short version:
+
+- Text, images, or audio get converted into embeddings (vectors)
+- Similar content ends up close together in that vector space
+- A query is embedded the same way, then the database finds the nearest neighbors
+
+| Use case | Example |
+| --- | --- |
+| Semantic search | Finding docs about "revenue growth" even if they say "sales increase" |
+| RAG | Feeding relevant context into an LLM prompt |
+| Recommendations | Matching similar products or content |
+
+A minimal similarity search looks like this:
+
+\`\`\`python
+results = collection.query(
+    query_embeddings=[embed(query)],
+    n_results=5
+)
+\`\`\`
+
+Want me to compare a couple of specific vector database options next?`, ts: Date.now()-1000*60*41, liked:null },
+  ];
+}
+
+/* ============================= INIT ============================= */
+function init(){
+  state.activeId = state.conversations[0].id;
+  renderConversations();
+  renderMessages();
+  renderShield();
+  updateGuestUI();
+  buildSettingsTabs();
+  toggleShield(state.shieldOpen);
+  document.addEventListener('click', (e)=>{
+    ['notifDrop','profileDrop','uploadMenu'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      if(!el.classList.contains('hidden') && !el.contains(e.target) && !e.target.closest('button')){
+        el.classList.add('hidden');
+      }
+    });
+  });
+}
+
+/* ============================= THEME ============================= */
+function toggleTheme(){
+  state.theme = state.theme === 'dark' ? 'light' : 'dark';
+  const html = document.documentElement;
+  html.classList.toggle('light', state.theme==='light');
+  html.classList.toggle('dark', state.theme==='dark');
+  ['iconMoon2','iconMoon3'].forEach(id=>document.getElementById(id).classList.toggle('hidden', state.theme==='light'));
+  ['iconSun2','iconSun3'].forEach(id=>document.getElementById(id).classList.toggle('hidden', state.theme==='dark'));
+}
+
+/* ============================= SIDEBAR ============================= */
+function toggleSidebarCollapse(){
+  state.sidebarCollapsed = !state.sidebarCollapsed;
+  const sb = document.getElementById('sidebar');
+  sb.style.width = state.sidebarCollapsed ? '76px' : '276px';
+  document.querySelectorAll('.sidebar-label').forEach(el=>{
+    el.style.opacity = state.sidebarCollapsed ? '0' : '1';
+    el.style.width = state.sidebarCollapsed ? '0' : 'auto';
+  });
+  document.getElementById('collapseIcon').style.transform = state.sidebarCollapsed ? 'rotate(180deg)' : 'none';
+}
+function openMobileSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebarScrim').classList.remove('hidden'); }
+function closeMobileSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarScrim').classList.add('hidden'); }
+
+/* ============================= CONVERSATIONS ============================= */
+function renderConversations(){
+  const q = (document.getElementById('searchChats').value || '').toLowerCase();
+  const list = document.getElementById('convList');
+  const sorted = [...state.conversations].filter(c=>c.title.toLowerCase().includes(q)).sort((a,b)=>{
+    if(a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    return b.updated - a.updated;
+  });
+  list.innerHTML = sorted.map(c => `
+    <div class="group relative rounded-xl ${c.id===state.activeId ? 'bg-indigo/15 border border-indigo/30' : 'hover:bg-white/5 border border-transparent'} transition-colors">
+      <button onclick="openConversation('${c.id}')" class="w-full text-left px-3 py-2.5 flex flex-col gap-0.5 min-w-0">
+        <span class="flex items-center gap-1.5 min-w-0">
+          ${c.pinned ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="#818CF8" class="shrink-0"><path d="M12 2l2 7h7l-5.5 4.5L17 21l-5-3.5L7 21l1.5-7.5L3 9h7z"/></svg>' : ''}
+          <span class="sidebar-label text-xs font-medium text-main truncate">${escapeHtml(c.title)}</span>
+        </span>
+        <span class="sidebar-label text-[10px] text-muted font-mono">${timeAgo(c.updated)}</span>
+      </button>
+      <div class="sidebar-label absolute right-1.5 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-0.5 bg-inherit">
+        <button onclick="event.stopPropagation(); togglePin('${c.id}')" class="p-1.5 rounded-md text-muted hover:text-indigo hover:bg-white/10" title="Pin"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2 7h7l-5.5 4.5L17 21l-5-3.5L7 21l1.5-7.5L3 9h7z"/></svg></button>
+        <button onclick="event.stopPropagation(); renameConversation('${c.id}')" class="p-1.5 rounded-md text-muted hover:text-cyan hover:bg-white/10" title="Rename"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg></button>
+        <button onclick="event.stopPropagation(); deleteConversation('${c.id}')" class="p-1.5 rounded-md text-muted hover:text-[color:var(--bad)] hover:bg-white/10" title="Delete"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6"/></svg></button>
+      </div>
+    </div>
+  `).join('') || `<p class="text-xs text-muted text-center py-6 sidebar-label">No chats found</p>`;
+}
+
+function newChat(){
+  const conv = { id:'c'+Date.now(), title:'New Chat', pinned:false, updated:Date.now(), messages:[] };
+  state.conversations.unshift(conv);
+  state.activeId = conv.id;
+  renderConversations();
+  renderMessages();
+  closeMobileSidebar();
+}
+function openConversation(id){
+  state.activeId = id;
+  renderConversations();
+  renderMessages();
+  closeMobileSidebar();
+}
+function togglePin(id){
+  const c = state.conversations.find(c=>c.id===id); c.pinned = !c.pinned; renderConversations();
+}
+function renameConversation(id){
+  const c = state.conversations.find(c=>c.id===id);
+  const name = window.prompt('Rename chat', c.title);
+  if(name && name.trim()){ c.title = name.trim(); renderConversations(); if(id===state.activeId) document.getElementById('chatTitle').textContent = c.title; }
+}
+function deleteConversation(id){
+  showConfirm('Delete this chat? This can\'t be undone.', ()=>{
+    state.conversations = state.conversations.filter(c=>c.id!==id);
+    if(state.activeId===id){
+      if(state.conversations.length){ state.activeId = state.conversations[0].id; } else { newChat(); }
+    }
+    renderConversations(); renderMessages();
+  });
+}
+
+/* ============================= MESSAGES ============================= */
+function activeConv(){ return state.conversations.find(c=>c.id===state.activeId); }
+
+function renderMessages(){
+  const conv = activeConv();
+  document.getElementById('chatTitle').textContent = conv.title;
+  const box = document.getElementById('messages');
+  if(!conv.messages.length){
+    box.innerHTML = `
+      <div class="h-full flex flex-col items-center justify-center text-center max-w-lg mx-auto">
+        <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo/20 to-purple/20 flex items-center justify-center mb-5">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#818CF8" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-4z"/></svg>
+        </div>
+        <h2 class="font-display text-2xl font-semibold text-main mb-2">Ask Nexora anything</h2>
+        <p class="text-sm text-muted mb-8">Every message is screened by Prompt Shield before it reaches a model.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full">
+          ${['Summarize this quarter\'s risk report','Draft a secure API onboarding email','Explain prompt injection in simple terms','Compare Llama 3.1 vs GPT-4 for support tickets'].map(s=>`
+            <button onclick="quickFill(this)" class="glass rounded-xl px-4 py-3 text-left text-xs text-muted hover:text-main hover:border-indigo/40 transition-colors">${s}</button>
+          `).join('')}
+        </div>
+      </div>`;
+    return;
+  }
+  box.innerHTML = conv.messages.map(m => renderMessage(m)).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+function quickFill(btn){
+  const input = document.getElementById('composerInput');
+  input.value = btn.textContent;
+  autoGrow(input); toggleSendBtn(); input.focus();
+}
+
+function renderMessage(m){
+  if(m.role === 'user'){
+    return `
+    <div class="flex justify-end fade-in" data-mid="${m.id}">
+      <div class="max-w-[80%] sm:max-w-[65%]">
+        <div class="msg-bubble-user rounded-2xl rounded-tr-md px-4 py-3">
+          <p class="text-sm text-main whitespace-pre-wrap leading-relaxed">${escapeHtml(m.text)}</p>
+        </div>
+        <div class="flex items-center justify-end gap-3 mt-1.5 px-1">
+          <span class="text-[10px] text-muted font-mono">${formatTime(m.ts)}</span>
+          <button onclick="editPrompt('${m.id}')" class="text-[10px] text-muted hover:text-main flex items-center gap-1"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>Edit</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  if(m.role === 'typing'){
+    return `
+    <div class="flex justify-start fade-in" data-mid="${m.id}">
+      <div class="flex items-start gap-3 max-w-[80%]">
+        <div class="h-7 w-7 rounded-full bg-gradient-to-br from-indigo to-purple flex items-center justify-center shrink-0 mt-0.5">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-4z"/></svg>
+        </div>
+        <div class="msg-bubble-ai rounded-2xl rounded-tl-md px-4 py-3.5 flex items-center gap-1.5">
+          <span class="typing-dot h-1.5 w-1.5 rounded-full bg-current text-muted"></span>
+          <span class="typing-dot h-1.5 w-1.5 rounded-full bg-current text-muted"></span>
+          <span class="typing-dot h-1.5 w-1.5 rounded-full bg-current text-muted"></span>
+        </div>
+      </div>
+    </div>`;
+  }
+  return `
+    <div class="flex justify-start fade-in" data-mid="${m.id}">
+      <div class="flex items-start gap-3 max-w-[85%] sm:max-w-[75%] min-w-0">
+        <div class="h-7 w-7 rounded-full bg-gradient-to-br from-indigo to-purple flex items-center justify-center shrink-0 mt-0.5">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-4z"/></svg>
+        </div>
+        <div class="min-w-0">
+          <div class="msg-bubble-ai rounded-2xl rounded-tl-md px-4 py-3.5">
+            <div class="prose-ai text-sm text-main">${renderMarkdown(m.text)}</div>
+          </div>
+          <div class="flex items-center gap-3 mt-1.5 px-1">
+            <span class="text-[10px] text-muted font-mono">${formatTime(m.ts)}</span>
+            <button onclick="copyMsg('${m.id}')" class="text-muted hover:text-main" title="Copy"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+            <button onclick="regenerate('${m.id}')" class="text-muted hover:text-main" title="Regenerate"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0114.85-3.36L23 10M1 14l4.65 4.36A9 9 0 0020.5 15"/></svg></button>
+            <button onclick="react('${m.id}','up')" class="${m.liked==='up' ? 'text-cyan' : 'text-muted hover:text-main'}" title="Like"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z"/><path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg></button>
+            <button onclick="react('${m.id}','down')" class="${m.liked==='down' ? 'text-[color:var(--bad)]' : 'text-muted hover:text-main'}" title="Dislike"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z"/><path d="M17 2h3a2 2 0 012 2v7a2 2 0 01-2 2h-3"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderMarkdown(text){
+  let src = escapeHtml(text);
+  // code fences
+  src = src.replace(/```([a-z]*)\n([\s\S]*?)```/g, (_, lang, code) => `<pre><code>${code}</code></pre>`);
+  // tables
+  src = src.replace(/((?:^\|.*\|$\n?)+)/gm, (block) => {
+    const rows = block.trim().split('\n').filter(r=>r.trim());
+    if(rows.length < 2) return block;
+    const head = rows[0].split('|').map(c=>c.trim()).filter(Boolean);
+    const bodyRows = rows.slice(2).map(r=>r.split('|').map(c=>c.trim()).filter(Boolean));
+    let t = '<table><thead><tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody>';
+    bodyRows.forEach(r=>{ t += '<tr>'+r.map(c=>`<td>${c}</td>`).join('')+'</tr>'; });
+    t += '</tbody></table>';
+    return t;
+  });
+  // bold / inline code
+  src = src.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  src = src.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // lists
+  src = src.replace(/(?:^|\n)((?:- .*(?:\n|$))+)/g, (m) => {
+    const items = m.trim().split('\n').map(l=>l.replace(/^- /,'').trim());
+    return '<ul>'+items.map(i=>`<li>${i}</li>`).join('')+'</ul>';
+  });
+  // paragraphs
+  src = src.split(/\n{2,}/).map(block=>{
+    if(block.match(/^<(ul|pre|table)/)) return block;
+    return `<p>${block.replace(/\n/g,'<br>')}</p>`;
+  }).join('');
+  return src;
+}
+
+/* ---- composer ---- */
+function autoGrow(el){ el.style.height='auto'; el.style.height = Math.min(el.scrollHeight,160)+'px'; }
+function toggleSendBtn(){ document.getElementById('sendBtn').disabled = !document.getElementById('composerInput').value.trim(); }
+function onComposerKeydown(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } }
+
+function sendMessage(){
+  const input = document.getElementById('composerInput');
+  const text = input.value.trim();
+  if(!text) return;
+  const conv = activeConv();
+  const userMsg = { id:'m'+Date.now(), role:'user', text, ts: Date.now() };
+  conv.messages.push(userMsg);
+  if(conv.messages.filter(m=>m.role==='user').length === 1){
+    conv.title = text.length > 42 ? text.slice(0,42)+'…' : text;
+  }
+  conv.updated = Date.now();
+  input.value=''; autoGrow(input); toggleSendBtn();
+  renderMessages(); renderConversations();
+
+  const shield = computeShield(text);
+  state.latestShield = shield;
+  logThreat(shield);
+  renderShield();
+
+  const typingMsg = { id:'typing-'+Date.now(), role:'typing' };
+  conv.messages.push(typingMsg);
+  renderMessages();
+
+  setTimeout(()=>{
+    conv.messages = conv.messages.filter(m=>m.role!=='typing');
+    const reply = { id:'m'+Date.now(), role:'assistant', text: generateReply(text, conv), ts: Date.now(), liked:null };
+    conv.messages.push(reply);
+    conv.updated = Date.now();
+    renderMessages(); renderConversations();
+  }, 1100 + Math.random()*700);
+}
+
+function generateReply(userText, conv){
+  const isFirst = conv.messages.filter(m=>m.role==='assistant').length === 0;
+  if(isFirst){
+    return `Here's an initial pass on **"${userText.length>60?userText.slice(0,60)+'…':userText}"**.
+
+- Prompt Shield screened this request: no policy or injection concerns found
+- Routed to \`Llama 3.1 8B Instruct\` for a text response
+
+\`\`\`text
+status: validated
+latency: 118ms
+\`\`\`
+
+Want me to go deeper on any part of this, or adjust the tone/format?`;
+  }
+  const templates = [
+    `Good follow-up. Building on the last answer: **the key tradeoff** here is speed versus precision — most teams start simple and tighten controls once they see real traffic patterns.`,
+    `Noted. I've validated this against the current policy set — nothing flagged. Here's a quick breakdown:\n\n- Context carried over from earlier in this chat\n- Response checked for consistency before sending\n\nLet me know if you'd like this reformatted as a table or checklist.`,
+    `That's a reasonable next step. \`Response Validation\` passed with high confidence, so here's a direct answer: keep the request scoped narrowly and let the Model Router handle the rest automatically.`,
+  ];
+  return templates[Math.floor(Math.random()*templates.length)];
+}
+
+function copyMsg(id){
+  const conv = activeConv(); const m = conv.messages.find(x=>x.id===id);
+  navigator.clipboard?.writeText(m.text).catch(()=>{});
+  showToast('Copied to clipboard');
+}
+function regenerate(id){
+  const conv = activeConv();
+  const idx = conv.messages.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  conv.messages[idx] = { id:'typing-'+Date.now(), role:'typing' };
+  renderMessages();
+  setTimeout(()=>{
+    conv.messages[idx] = { id:'m'+Date.now(), role:'assistant', text: generateReply('regenerate', conv), ts: Date.now(), liked:null };
+    renderMessages();
+  }, 900);
+}
+function react(id, dir){
+  const conv = activeConv(); const m = conv.messages.find(x=>x.id===id);
+  m.liked = m.liked === dir ? null : dir;
+  renderMessages();
+}
+function editPrompt(id){
+  const conv = activeConv(); const m = conv.messages.find(x=>x.id===id);
+  const input = document.getElementById('composerInput');
+  input.value = m.text; autoGrow(input); toggleSendBtn(); input.focus();
+  conv.messages = conv.messages.filter(x=>x.id!==id && !(x.role==='assistant' && conv.messages.indexOf(x)===conv.messages.indexOf(m)+1));
+  renderMessages();
+  showToast('Edit your prompt and resend');
+}
+
+/* ============================= PROMPT SHIELD ============================= */
+function computeShield(text){
+  const lower = text.toLowerCase();
+  const piiHints = ['ssn','password','credit card','email:','phone number'];
+  const injectionHints = ['ignore previous','system prompt','jailbreak','bypass'];
+  const foundPii = piiHints.filter(p=>lower.includes(p));
+  const foundInjection = injectionHints.some(p=>lower.includes(p));
+  let risk = 'Low', safety = 88 + Math.floor(Math.random()*10);
+  let injection = 'Clear', jailbreak='Clear', policy='Compliant', threatStatus='None Detected';
+  if(foundInjection){ risk='High'; safety = 30 + Math.floor(Math.random()*15); injection='Detected'; jailbreak='Suspected'; policy='Violation Flagged'; threatStatus='Active Alert'; }
+  else if(foundPii.length){ risk='Medium'; safety = 62 + Math.floor(Math.random()*12); policy='Reviewed'; threatStatus='Monitored'; }
+  return {
+    safety, risk,
+    category: foundInjection ? 'Potential Policy Violation' : (foundPii.length ? 'Sensitive Data' : ['General Assistance','Technical Question','Creative Request','Data Analysis'][Math.floor(Math.random()*4)]),
+    trust: Math.max(40, safety - Math.floor(Math.random()*6)),
+    classification: foundInjection ? 'Adversarial Prompt' : 'Informational Query',
+    pii: foundPii,
+    threatStatus, policy, injection, jailbreak,
+    toxicity: foundInjection ? 40+Math.floor(Math.random()*20) : Math.floor(Math.random()*8),
+    confidence: 88 + Math.floor(Math.random()*10),
+    validation: foundInjection ? 'Blocked' : 'Passed',
+  };
+}
+function logThreat(s){
+  state.threatLog.unshift({ time: Date.now(), risk: s.risk, category: s.category });
+  state.threatLog = state.threatLog.slice(0,6);
+}
+const riskColor = r => r==='High' ? 'var(--bad)' : r==='Medium' ? 'var(--warn)' : 'var(--ok)';
+
+function renderShield(){
+  const s = state.latestShield;
+  const circumference = 2*Math.PI*15;
+  const offset = circumference - (s.safety/100)*circumference;
+  document.getElementById('miniShieldRing').setAttribute('stroke', riskColor(s.risk));
+  document.getElementById('miniShieldRing').setAttribute('stroke-dasharray', circumference);
+  document.getElementById('miniShieldRing').setAttribute('stroke-dashoffset', offset);
+  document.getElementById('miniShieldText').textContent = `Safety ${s.safety} · ${s.risk} risk`;
+
+  const donutOffset = 251 - (s.safety/100)*251;
+  document.getElementById('shieldContent').innerHTML = `
+    <div class="flex flex-col items-center glass rounded-2xl py-6">
+      <div class="relative h-32 w-32">
+        <svg viewBox="0 0 100 100" class="-rotate-90 h-32 w-32">
+          <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(148,163,184,.15)" stroke-width="9"/>
+          <circle cx="50" cy="50" r="40" fill="none" stroke="${riskColor(s.risk)}" stroke-width="9" stroke-linecap="round" stroke-dasharray="251" stroke-dashoffset="${donutOffset}"/>
+        </svg>
+        <div class="absolute inset-0 flex flex-col items-center justify-center">
+          <span class="font-display text-2xl font-semibold text-main">${s.safety}</span>
+          <span class="text-[10px] text-muted font-mono">SAFETY SCORE</span>
+        </div>
+      </div>
+      <span class="mt-3 text-xs font-mono px-3 py-1 rounded-full" style="color:${riskColor(s.risk)}; background:${riskColor(s.risk)}22;">${s.risk} Risk</span>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div class="glass rounded-xl p-3">
+        <p class="text-[10px] font-mono text-muted mb-1">PROMPT CATEGORY</p>
+        <p class="text-xs font-medium text-main">${s.category}</p>
+      </div>
+      <div class="glass rounded-xl p-3">
+        <p class="text-[10px] font-mono text-muted mb-1">CLASSIFICATION</p>
+        <p class="text-xs font-medium text-main">${s.classification}</p>
+      </div>
+    </div>
+
+    ${shieldBar('Response Trust Score', s.trust, 'var(--cyan)')}
+    ${shieldBar('Confidence Score', s.confidence, 'var(--indigo)')}
+    ${shieldBar('Toxicity Score', s.toxicity, s.toxicity>30?'var(--bad)':'var(--ok)')}
+
+    <div class="grid grid-cols-2 gap-2.5">
+      ${statusBadge('Threat Status', s.threatStatus)}
+      ${statusBadge('Policy Status', s.policy)}
+      ${statusBadge('Prompt Injection', s.injection)}
+      ${statusBadge('Jailbreak Detection', s.jailbreak)}
+    </div>
+
+    <div class="glass rounded-xl p-3.5">
+      <p class="text-[10px] font-mono text-muted mb-2">SENSITIVE DATA DETECTION</p>
+      ${s.pii.length ? `<div class="flex flex-wrap gap-1.5">${s.pii.map(p=>`<span class="text-[10px] px-2 py-1 rounded-full" style="background:var(--warn)22; color:var(--warn);">${p}</span>`).join('')}</div>` : `<p class="text-xs text-[color:var(--ok)]">No sensitive data detected</p>`}
+    </div>
+
+    <div class="glass rounded-xl p-3.5">
+      <p class="text-[10px] font-mono text-muted mb-3">THREAT TIMELINE</p>
+      <div class="space-y-2.5">
+        ${state.threatLog.length ? state.threatLog.map(t=>`
+          <div class="flex items-center gap-2.5">
+            <span class="h-1.5 w-1.5 rounded-full shrink-0" style="background:${riskColor(t.risk)}"></span>
+            <span class="text-[11px] text-muted flex-1 truncate">${t.category}</span>
+            <span class="text-[10px] text-muted font-mono">${timeAgo(t.time)}</span>
+          </div>`).join('') : `<p class="text-xs text-muted">No activity yet this session</p>`}
+      </div>
+    </div>
+  `;
+}
+function shieldBar(label, value, color){
+  return `
+    <div>
+      <div class="flex items-center justify-between mb-1.5">
+        <span class="text-[11px] text-muted">${label}</span>
+        <span class="text-[11px] font-mono text-main">${value}%</span>
+      </div>
+      <div class="h-1.5 rounded-full bg-white/10 overflow-hidden">
+        <div class="h-full rounded-full transition-all duration-700" style="width:${value}%; background:${color};"></div>
+      </div>
+    </div>`;
+}
+function statusBadge(label, value){
+  const ok = ['Clear','Compliant','None Detected','Passed'].includes(value);
+  const bad = ['Detected','Violation Flagged','Active Alert','Suspected','Blocked'].includes(value);
+  const color = bad ? 'var(--bad)' : ok ? 'var(--ok)' : 'var(--warn)';
+  return `
+    <div class="glass rounded-xl p-3">
+      <p class="text-[10px] font-mono text-muted mb-1">${label}</p>
+      <p class="text-xs font-medium flex items-center gap-1.5" style="color:${color}">
+        <span class="h-1.5 w-1.5 rounded-full" style="background:${color}"></span>${value}
+      </p>
+    </div>`;
+}
+function toggleShield(force){
+  const panel = document.getElementById('shieldPanel');
+  state.shieldOpen = typeof force === 'boolean' ? force : !state.shieldOpen;
+  if(window.innerWidth < 1024){
+    panel.classList.remove('hidden'); panel.classList.add('flex');
+    panel.classList.toggle('open', state.shieldOpen);
+  } else {
+    panel.classList.toggle('hidden', !state.shieldOpen);
+    panel.classList.toggle('flex', state.shieldOpen);
+  }
+}
+
+/* ============================= GUEST / UPLOAD / MIC ============================= */
+function updateGuestUI(){
+  const guest = state.isGuest;
+  document.getElementById('uploadLock').classList.toggle('hidden', !guest);
+  document.getElementById('micLock').classList.toggle('hidden', !guest);
+  document.getElementById('guestHint').classList.toggle('hidden', !guest);
+  document.getElementById('profileDropGuest').classList.toggle('hidden', !guest);
+  document.getElementById('profileDropUser').classList.toggle('hidden', guest);
+
+  if(guest){
+    document.getElementById('userAvatar').textContent = 'G';
+    document.getElementById('userNameLbl').textContent = 'Guest User';
+    document.getElementById('userEmailLbl').textContent = 'Sign up to sync your chats';
+    document.getElementById('profileAvatarBtn').textContent = 'G';
+  } else {
+    const initials = state.user.name.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();
+    document.getElementById('userAvatar').textContent = initials;
+    document.getElementById('userNameLbl').textContent = state.user.name;
+    document.getElementById('userEmailLbl').textContent = state.user.email;
+    document.getElementById('profileAvatarBtn').textContent = initials;
+    document.getElementById('profileDropName').textContent = state.user.name;
+    document.getElementById('profileDropEmail').textContent = state.user.email;
+  }
+}
+function onUploadClick(){
+  if(state.isGuest){ showUpsell('Sign up to upload files', 'File uploads (images, PDFs, Word, CSV, and more) are available once you create a free Nexora account.'); return; }
+  toggleDropdown('uploadMenu');
+}
+function mockUpload(kind){
+  document.getElementById('uploadMenu').classList.add('hidden');
+  showToast(kind + ' attached (demo)');
+}
+function onMicClick(){
+  if(state.isGuest){ showUpsell('Sign up to use voice input', 'Voice input is available once you create a free Nexora account.'); return; }
+  showToast('Listening… (demo)');
+}
+function onUserSectionClick(){
+  if(state.isGuest){ openAuth('login'); } else { openSettings('account'); }
+}
+
+/* ============================= MODALS ============================= */
+function openModal(id){ const el=document.getElementById(id); el.classList.remove('hidden'); el.classList.add('flex'); document.body.style.overflow='hidden'; }
+function closeModal(id){ const el=document.getElementById(id); el.classList.add('hidden'); el.classList.remove('flex'); document.body.style.overflow=''; }
+function toggleDropdown(id){
+  const el = document.getElementById(id);
+  const wasHidden = el.classList.contains('hidden');
+  ['notifDrop','profileDrop','uploadMenu'].forEach(x=>document.getElementById(x).classList.add('hidden'));
+  if(wasHidden) el.classList.remove('hidden');
+}
+function showUpsell(title, text){
+  document.getElementById('upsellTitle').textContent = title;
+  document.getElementById('upsellText').textContent = text;
+  openModal('upsellModal');
+}
+function showConfirm(text, onConfirm){
+  document.getElementById('confirmText').textContent = text;
+  const btn = document.getElementById('confirmActionBtn');
+  const clone = btn.cloneNode(true);
+  btn.parentNode.replaceChild(clone, btn);
+  clone.addEventListener('click', ()=>{ onConfirm(); closeModal('confirmModal'); });
+  openModal('confirmModal');
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.remove('hidden');
+  clearTimeout(window._toastT);
+  window._toastT = setTimeout(()=>t.classList.add('hidden'), 2200);
+}
+
+function openAuth(type){
+  document.getElementById('loginForm').classList.toggle('hidden', type!=='login');
+  document.getElementById('signupForm').classList.toggle('hidden', type!=='signup');
+  openModal('authModal');
+}
+function togglePw(id){ const el=document.getElementById(id); el.type = el.type==='password'?'text':'password'; }
+function checkPwMatch(){
+  const p1=document.getElementById('signupPw').value, p2=document.getElementById('signupPw2').value;
+  const msg=document.getElementById('pwMatchMsg');
+  if(!p2){ msg.classList.add('hidden'); return; }
+  msg.classList.remove('hidden');
+  if(p1===p2){ msg.textContent='Passwords match'; msg.style.color='var(--ok)'; }
+  else { msg.textContent='Passwords do not match'; msg.style.color='var(--bad)'; }
+}
+function handleLogin(e, google){
+  if(e) e.preventDefault();
+  const email = google ? 'jordan@company.com' : document.getElementById('loginEmail').value;
+  const name = email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g, c=>c.toUpperCase());
+  completeAuth(name, email);
+}
+function handleSignup(e, google){
+  if(e) e.preventDefault();
+  if(!google){
+    const p1=document.getElementById('signupPw').value, p2=document.getElementById('signupPw2').value;
+    if(p1!==p2){ showToast('Passwords do not match'); return; }
+  }
+  const name = google ? 'Jordan Lee' : document.getElementById('signupName').value;
+  const email = google ? 'jordan@company.com' : document.getElementById('signupEmail').value;
+  completeAuth(name, email);
+}
+function completeAuth(name, email){
+  state.isGuest = false;
+  state.user = { name, email };
+  updateGuestUI();
+  closeModal('authModal');
+  showToast(`Welcome, ${name.split(' ')[0]}!`);
+}
+function logout(){
+  showConfirm('Log out of Nexora?', ()=>{
+    state.isGuest = true; state.user = null;
+    updateGuestUI();
+    document.getElementById('profileDrop').classList.add('hidden');
+    closeModal('settingsModal');
+    showToast('Logged out');
+  });
+}
+
+/* ============================= SETTINGS ============================= */
+const SETTINGS_TABS = [
+  {id:'account', label:'Account'}, {id:'preferences', label:'Preferences'}, {id:'appearance', label:'Appearance'},
+  {id:'privacy', label:'Data & Privacy'}, {id:'security', label:'Security'}, {id:'notifications', label:'Notifications'},
+  {id:'devices', label:'Connected Devices'}, {id:'language', label:'Language'}, {id:'accessibility', label:'Accessibility'},
+  {id:'help', label:'Help & Support'}, {id:'api', label:'API Keys'}, {id:'about', label:'About Nexora'},
+];
+function buildSettingsTabs(){
+  document.getElementById('settingsTabs').innerHTML = SETTINGS_TABS.map(t=>`
+    <button onclick="openSettings('${t.id}')" data-tab="${t.id}" class="tab-item w-full text-left px-3 py-2 rounded-lg text-xs text-muted">${t.label}</button>
+  `).join('') + `<button onclick="logout()" class="w-full text-left px-3 py-2 rounded-lg text-xs mt-2 border-t border-white/5 pt-3" style="color:var(--bad)">Log out</button>`;
+}
+function openSettings(tab){
+  if(state.isGuest && tab!=='about' && tab!=='help'){
+    openModal('settingsModal'); // still allow browsing, but account fields will show guest state
+  }
+  state.activeTab = tab;
+  document.querySelectorAll('#settingsTabs .tab-item').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  document.getElementById('settingsTitle').textContent = SETTINGS_TABS.find(t=>t.id===tab)?.label || 'Settings';
+  document.getElementById('settingsContent').innerHTML = settingsPane(tab);
+  openModal('settingsModal');
+}
+function settingsPane(tab){
+  const card = (inner) => `<div class="glass rounded-2xl p-5">${inner}</div>`;
+  const row = (label, control, sub) => `
+    <div class="flex items-center justify-between gap-4 py-2.5">
+      <div class="min-w-0"><p class="text-sm text-main">${label}</p>${sub?`<p class="text-xs text-muted mt-0.5">${sub}</p>`:''}</div>
+      ${control}
+    </div>`;
+  const sw = (id, on) => `<div id="${id}" class="switch ${on?'on':''}" onclick="this.classList.toggle('on')"><div class="dot"></div></div>`;
+
+  switch(tab){
+    case 'account':
+      if(state.isGuest){
+        return card(`
+          <p class="font-display text-sm font-medium text-main mb-2">You're browsing as a guest</p>
+          <p class="text-xs text-muted mb-5 leading-relaxed">Create a free account to save your profile, sync chats across devices, and unlock personalization.</p>
+          <div class="flex gap-2.5">
+            <button onclick="closeModal('settingsModal'); openAuth('signup')" class="btn-primary text-white text-sm font-display font-medium px-5 py-2.5 rounded-full">Sign up free</button>
+            <button onclick="closeModal('settingsModal'); openAuth('login')" class="text-sm text-muted hover:text-main px-3">Log in</button>
+          </div>`);
+      }
+      return `
+        ${card(`
+          <div class="flex items-center gap-4 mb-1">
+            <div class="h-16 w-16 rounded-full bg-gradient-to-br from-indigo to-purple flex items-center justify-center font-display text-xl font-semibold text-white">${state.user.name.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase()}</div>
+            <div><p class="text-sm font-medium text-main">${state.user.name}</p><p class="text-xs text-muted">${state.user.email}</p></div>
+          </div>`)}
+        ${card(`
+          ${row('Full name', `<input type="text" value="${state.user.name}" class="rounded-lg px-3 py-1.5 text-xs w-40" />`)}
+          ${row('Email', `<input type="email" value="${state.user.email}" class="rounded-lg px-3 py-1.5 text-xs w-48" />`)}
+          ${row('Password', `<button class="text-xs text-cyan hover:underline">Change password</button>`)}
+          ${row('Two-Factor Authentication', sw('tfaSwitch', false), 'Add an extra layer of login security')}
+        `)}
+        ${card(`
+          <p class="text-xs font-mono text-muted mb-2">SESSION HISTORY</p>
+          ${['Chrome on macOS · Hyderabad, IN — now','Safari on iPhone — 2 days ago'].map(s=>`<p class="text-xs text-muted py-1">${s}</p>`).join('')}
+        `)}
+        ${card(`<button onclick="showToast('Account deletion requires email confirmation (demo)')" class="text-sm" style="color:var(--bad)">Delete account</button>`)}`;
+
+    case 'preferences':
+      return card(`
+        ${row('Theme', `<select class="rounded-lg px-2.5 py-1.5 text-xs"><option>System</option><option selected>${state.theme==='dark'?'Dark':'Light'}</option></select>`)}
+        ${row('Font size', `<select class="rounded-lg px-2.5 py-1.5 text-xs"><option>Small</option><option selected>Medium</option><option>Large</option></select>`)}
+        ${row('Chat density', `<select class="rounded-lg px-2.5 py-1.5 text-xs"><option>Compact</option><option selected>Comfortable</option><option>Spacious</option></select>`)}
+        ${row('Default model', `<select class="rounded-lg px-2.5 py-1.5 text-xs"><option selected>Llama 3.1 8B Instruct</option><option>LLaVA (vision)</option></select>`)}
+        ${row('Animations', sw('animSwitch', true))}
+      `);
+
+    case 'appearance':
+      return card(`
+        <p class="text-xs font-mono text-muted mb-3">THEME</p>
+        <div class="grid grid-cols-2 gap-3 mb-5">
+          <button onclick="if(state.theme!=='dark')toggleTheme(); openSettings('appearance')" class="rounded-xl p-3 border ${state.theme==='dark'?'border-indigo':'border-white/10'} bg-[#050816] text-left">
+            <div class="h-10 rounded-lg bg-gradient-to-br from-indigo/40 to-purple/30 mb-2"></div><span class="text-xs text-white">Dark</span>
+          </button>
+          <button onclick="if(state.theme!=='light')toggleTheme(); openSettings('appearance')" class="rounded-xl p-3 border ${state.theme==='light'?'border-indigo':'border-white/10'} bg-[#F8FAFC] text-left">
+            <div class="h-10 rounded-lg bg-gradient-to-br from-indigo/20 to-purple/20 mb-2"></div><span class="text-xs text-slate-800">Light</span>
+          </button>
+        </div>
+        ${row('Reduce motion', sw('motionSwitch', false))}
+        ${row('High contrast', sw('contrastSwitch', false))}
+      `);
+
+    case 'privacy':
+      return `
+        ${card(`
+          ${row('Chat history', `<button onclick="showToast('Chat history is stored on this device (demo)')" class="text-xs text-cyan hover:underline">Manage</button>`)}
+          ${row('Export data', `<button onclick="showToast('Export started (demo)')" class="text-xs text-cyan hover:underline">Export</button>`)}
+          ${row('Delete data', `<button onclick="showConfirm('Delete all chat data?', ()=>{state.conversations=[]; newChat(); showToast('Data deleted');})" class="text-xs" style="color:var(--bad)">Delete all</button>`)}
+        `)}
+        ${card(`
+          ${row('Use my chats to improve Nexora', sw('consentSwitch', true))}
+          ${row('Personalization', sw('personalizeSwitch', !state.isGuest), state.isGuest ? 'Sign up to enable personalization' : '')}
+        `)}`;
+
+    case 'security':
+      return `
+        ${card(`
+          ${row('Prompt Shield', sw('shieldSwitch', true), 'Screen every prompt before it reaches a model')}
+          ${row('Privacy controls', `<button onclick="openSettings('privacy')" class="text-xs text-cyan hover:underline">Open</button>`)}
+        `)}
+        ${card(`
+          <p class="text-xs font-mono text-muted mb-2">ACTIVE SESSIONS</p>
+          ${row('Chrome · macOS', `<span class="text-[10px] px-2 py-1 rounded-full" style="background:var(--ok)22;color:var(--ok)">This device</span>`)}
+          ${row('Safari · iPhone', `<button onclick="showToast('Session revoked (demo)')" class="text-xs" style="color:var(--bad)">Revoke</button>`)}
+        `)}
+        ${card(`${row('Encryption status', `<span class="text-xs flex items-center gap-1.5" style="color:var(--ok)"><span class="h-1.5 w-1.5 rounded-full" style="background:var(--ok)"></span>AES-256 active</span>`)}`)}`;
+
+    case 'notifications':
+      return card(`
+        ${row('Email notifications', sw('n1', true))}
+        ${row('Security alerts', sw('n2', true), 'Threats detected in your prompts')}
+        ${row('System updates', sw('n3', false))}
+        ${row('Product announcements', sw('n4', false))}
+      `);
+
+    case 'devices':
+      return card(`
+        ${row('MacBook Pro — Chrome', `<span class="text-[10px] px-2 py-1 rounded-full" style="background:var(--ok)22;color:var(--ok)">Active now</span>`)}
+        ${row('iPhone 15 — Nexora app', `<span class="text-xs text-muted">2 days ago</span>`)}
+        ${row('iPad — Safari', `<button onclick="showToast('Device removed (demo)')" class="text-xs" style="color:var(--bad)">Remove</button>`)}
+      `);
+
+    case 'language':
+      return card(`
+        ${row('App language', `<select class="rounded-lg px-2.5 py-1.5 text-xs"><option selected>English (US)</option><option>Español</option><option>Français</option><option>日本語</option></select>`)}
+        ${row('Auto-detect input language', sw('langSwitch', true))}
+      `);
+
+    case 'accessibility':
+      return card(`
+        ${row('Screen reader optimizations', sw('a11y1', true))}
+        ${row('Keyboard shortcuts', sw('a11y2', true))}
+        ${row('Larger click targets', sw('a11y3', false))}
+        ${row('Reduce motion', sw('a11y4', false))}
+      `);
+
+    case 'help':
+      return card(`
+        ${row('Documentation', `<button onclick="showToast('Opening docs (demo)')" class="text-xs text-cyan hover:underline">Open</button>`)}
+        ${row('Contact support', `<button onclick="showToast('Support ticket started (demo)')" class="text-xs text-cyan hover:underline">Contact</button>`)}
+        ${row('Report a security issue', `<button onclick="showToast('Thanks — routed to the security team (demo)')" class="text-xs" style="color:var(--warn)">Report</button>`)}
+      `);
+
+    case 'api':
+      if(state.isGuest) return card(`<p class="text-sm text-muted">Sign up to generate API keys for programmatic access.</p>`);
+      return card(`
+        ${row('Production key', `<code class="text-[11px] font-mono text-muted">sk-nex-••••••••4f2a</code>`)}
+        ${row('', `<button onclick="showToast('New key generated (demo)')" class="text-xs text-cyan hover:underline">Generate new key</button>`)}
+      `);
+
+    case 'about':
+      return card(`
+        <p class="font-display text-sm font-medium text-main mb-2">Nexora</p>
+        <p class="text-xs text-muted leading-relaxed mb-3">A self-defending confidential multimodal LLM gateway with multi-agent orchestration. Version 1.0.0 (prototype).</p>
+        <div class="flex gap-4 text-xs text-cyan">
+          <a href="#" class="hover:underline">Privacy Policy</a><a href="#" class="hover:underline">Terms of Service</a><a href="#" class="hover:underline">GitHub</a>
+        </div>`);
+    default: return '';
+  }
+}
+
+/* ============================= UTIL ============================= */
+function timeAgo(ts){
+  const s = Math.floor((Date.now()-ts)/1000);
+  if(s<60) return 'now';
+  if(s<3600) return Math.floor(s/60)+'m ago';
+  if(s<86400) return Math.floor(s/3600)+'h ago';
+  return Math.floor(s/86400)+'d ago';
+}
+function formatTime(ts){ return new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+
+window.addEventListener('resize', ()=>{ if(window.innerWidth>=1024){ document.getElementById('shieldPanel').classList.remove('open'); } });
+
+init();
+</script>
+</body>
+</html>
