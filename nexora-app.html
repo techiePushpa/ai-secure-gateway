@@ -486,6 +486,8 @@ function init(){
   updateGuestUI();
   buildSettingsTabs();
   toggleShield(state.shieldOpen);
+  const authParam = new URLSearchParams(window.location.search).get('auth');
+  if(authParam === 'login' || authParam === 'signup'){ openAuth(authParam); }
   document.addEventListener('click', (e)=>{
     ['notifDrop','profileDrop','uploadMenu'].forEach(id=>{
       const el = document.getElementById(id);

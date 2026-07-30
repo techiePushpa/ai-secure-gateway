@@ -225,8 +225,8 @@
           <svg id="iconMoon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
           <svg id="iconSun" class="hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
         </button>
-        <button onclick="openModal('login')" class="text-[14px] font-display text-muted hover:text-main px-3 py-2 transition-colors">Log in</button>
-        <button onclick="openModal('signup')" class="btn-primary text-[14px] font-display font-medium text-white px-5 py-2.5 rounded-full">Sign up</button>
+        <button onclick="window.location.href='nexora-app.html?auth=login'" class="text-[14px] font-display text-muted hover:text-main px-3 py-2 transition-colors">Log in</button>
+        <button onclick="window.location.href='nexora-app.html?auth=signup'" class="btn-primary text-[14px] font-display font-medium text-white px-5 py-2.5 rounded-full">Sign up</button>
       </div>
 
       <button id="mobileMenuBtn" class="lg:hidden p-2 text-main">
@@ -242,8 +242,8 @@
     <a href="#models" class="block text-muted">Models</a>
     <a href="#docs" class="block text-muted">Documentation</a>
     <div class="flex gap-3 pt-2">
-      <button onclick="openModal('login')" class="flex-1 py-2.5 rounded-full border border-white/10 text-muted">Log in</button>
-      <button onclick="openModal('signup')" class="flex-1 btn-primary text-white py-2.5 rounded-full">Sign up</button>
+      <button onclick="window.location.href='nexora-app.html?auth=login'" class="flex-1 py-2.5 rounded-full border border-white/10 text-muted">Log in</button>
+      <button onclick="window.location.href='nexora-app.html?auth=signup'" class="flex-1 btn-primary text-white py-2.5 rounded-full">Sign up</button>
     </div>
   </div>
 </header>
@@ -263,7 +263,7 @@
         Nexora is a self-defending confidential multimodal LLM gateway that protects sensitive AI interactions with intelligent policy enforcement, prompt security, multimodal validation, and multi-agent orchestration — before a single response is generated.
       </p>
       <div class="mt-10 flex flex-wrap items-center gap-4">
-        <a href="#docs" class="btn-primary text-white font-display font-medium px-7 py-3.5 rounded-full">Try Nexora</a>
+        <a href="nexora-app.html" class="btn-primary text-white font-display font-medium px-7 py-3.5 rounded-full">Try Nexora</a>
         <a href="#how" class="font-display text-sm text-muted hover:text-main transition-colors flex items-center gap-2 px-2">
           See how it works
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
@@ -751,7 +751,7 @@
   <div class="max-w-4xl mx-auto text-center reveal glass-strong rounded-3xl px-8 py-16">
     <h2 class="font-display text-3xl sm:text-4xl font-semibold text-main mb-5">Put a gateway in front of your models.</h2>
     <p class="text-muted mb-9 max-w-lg mx-auto">Start validating every request before it reaches a model — text, voice, and image, from day one.</p>
-    <button onclick="openModal('signup')" class="btn-primary text-white font-display font-medium px-8 py-3.5 rounded-full">Try Nexora</button>
+    <button onclick="window.location.href='nexora-app.html'" class="btn-primary text-white font-display font-medium px-8 py-3.5 rounded-full">Try Nexora</button>
   </div>
 </section>
 
