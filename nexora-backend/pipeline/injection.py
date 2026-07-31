@@ -15,7 +15,7 @@ _PATTERNS = [
     (r"you are now (in )?(developer|debug|god|admin) mode", 35),
     (r"pretend (you|that you) (are|have) no (rules|restrictions|guidelines)", 35),
     (r"override (your|the) (guidelines|rules|restrictions|safety)", 40),
-    (r"bypass (your|the) (safety|security|filters|restrictions|guardrails)", 40),
+    (r"bypass (your|the) (safety|security|filters|restrictions|guardrails|rules|guidelines)( rules)?", 40),
     (r"act as (if )?(you (are|were) )?(an? )?(unrestricted|unfiltered|jailbroken)", 35),
     (r"repeat (the|your) (text|words|instructions) above", 25),
     (r"this is a (test|simulation)[,.]? (ignore|disregard)", 30),

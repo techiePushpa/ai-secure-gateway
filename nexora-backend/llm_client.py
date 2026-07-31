@@ -1,11 +1,7 @@
 """
-Stage 12 — Forward to LLM.
-
-This is a MOCK client so the gateway is runnable and demoable without any
-model credentials. Swap `generate()` for a real call (Ollama, an OpenAI/
-Anthropic-compatible endpoint, etc.) when you're ready to connect a real
-downstream model. The gateway logic in main.py does not need to change —
-only this function.
+Local template fallback — used by providers.py only when no model provider
+is configured/reachable (no API keys set, or every provider request fails).
+This keeps the gateway demoable and non-crashing even with zero setup.
 """
 import random
 
@@ -28,11 +24,16 @@ _TEMPLATES_BY_CATEGORY = {
 }
 
 _DEFAULT = [
-    "Request validated and processed. Here's a response based on what you asked — let me know if you'd like it reformatted or expanded.",
+    "*(No model provider is configured — this is a placeholder response. Add GROQ_API_KEY, OPENROUTER_API_KEY, or OPENAI_API_KEY to your `.env` to get real answers.)*\n\nRequest validated and processed based on what you asked.",
 ]
 
 
-def generate(masked_prompt: str, category: str) -> str:
-    """Mock generation. Replace with a real downstream model call."""
+def template_fallback(category: str) -> str:
     options = _TEMPLATES_BY_CATEGORY.get(category, _DEFAULT)
     return random.choice(options)
+
+
+# Backwards-compatible alias (old code called llm_client.generate(...))
+def generate(masked_prompt: str, category: str) -> str:
+    return template_fallback(category)
+

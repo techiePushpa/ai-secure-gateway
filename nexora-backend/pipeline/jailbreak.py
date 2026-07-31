@@ -11,6 +11,8 @@ _PATTERNS = [
     (r"\bDAN\b", 45),
     (r"do anything now", 45),
     (r"\bjailbreak(ed|ing)?\b", 40),
+    (r"act as (an? )?(developer|debug|god|admin) mode", 40),
+    (r"\bdeveloper mode\b", 35),
     (r"no (rules|restrictions|limitations|filters) (apply|whatsoever)", 40),
     (r"without any (restrictions|limitations|rules|filters)", 35),
     (r"\bunfiltered (mode|version|ai)\b", 35),

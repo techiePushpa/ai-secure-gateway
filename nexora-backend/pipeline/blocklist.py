@@ -30,6 +30,18 @@ _CATEGORIES = {
         r"how to (build|acquire|make) (a |an )?(weapon|firearm) illegally",
         r"plan (a |an )?(terrorist attack|mass shooting|bombing)",
         r"synthesi[sz]e (a |an )?(nerve agent|chemical weapon|bioweapon)",
+        r"help me (perform|commit|carry out) illegal activit(y|ies)",
+        r"how (do i|to) (perform|commit|carry out) illegal activit(y|ies)",
+        r"generate harmful instructions",
+    ],
+    "Confidential Data Exposure": [
+        r"(give me|share|show me) (the |our |your )?company secret",
+        r"company secret (data|information|files)",
+        r"reveal confidential (documents|information|data|files)",
+        r"(show|reveal|give me) (the |your |our )?internal (database )?credentials",
+        r"internal database credentials",
+        r"leak confidential (information|data|documents)",
+        r"(show|share|leak) (internal|private|proprietary) (documents|records|files)",
     ],
     "Self-Harm Instructions": [
         r"(how to|ways to|methods to) (kill myself|commit suicide|end my life)",

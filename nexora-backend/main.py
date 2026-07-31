@@ -13,14 +13,15 @@ Then point NEXORA_API_BASE in nexora-app.html at http://localhost:8000
 """
 import time
 import uuid
+import base64
 from typing import Optional, List
 
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from pipeline import classification, injection, jailbreak, pii, risk, blocklist
-import llm_client
+import providers
 
 app = FastAPI(title="Nexora Secure AI Gateway", version="1.0.0")
 
@@ -56,7 +57,7 @@ def make_stage(n: int, label: str, start: float) -> Stage:
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "service": "nexora-gateway", "version": "1.0.0"}
+    return {"status": "ok", "service": "nexora-gateway", "version": "1.0.0", "providers": providers.providers_status()}
 
 
 @app.post("/api/gateway")
@@ -168,7 +169,7 @@ def gateway(req: GatewayRequest):
             "retrieval_source": None,
             "route_to": None,
             "blocked_reason": reason,
-            "final_response": ("We couldn't process this request because it violates Nexora's "
+            "final_response": ("❌ This request cannot be processed because it violates Nexora's "
                                 "security and safety policies. The request has been stopped "
                                 "before reaching the AI model."),
             "prompt_shield": {
@@ -196,7 +197,7 @@ def gateway(req: GatewayRequest):
 
     # ---- Stage 12: Forward to LLM ----
     t0 = time.time()
-    final_response = llm_client.generate(masked_text, category)
+    final_response = providers.chat_complete(masked_text, category)
     stages.append(make_stage(12, "Sending to LLM", t0))
 
     # ---- Stage 13: Output Verification ----
@@ -263,3 +264,96 @@ def _error_response(stages, start, reason):
         },
         "stages": [s.dict() for s in stages],
     }
+
+
+# ============================================================================
+# IMAGE UPLOAD -> VISION  (guest-restricted feature)
+# ============================================================================
+
+MAX_IMAGE_BYTES = 8 * 1024 * 1024   # 8MB
+MAX_AUDIO_BYTES = 20 * 1024 * 1024  # 20MB
+
+
+@app.post("/api/vision")
+async def vision_endpoint(
+    is_guest: bool = Form(...),
+    question: str = Form("Describe this image."),
+    image: UploadFile = File(...),
+):
+    if is_guest:
+        return {"allowed": False, "blocked_reason": "Guest Restriction",
+                "final_response": "Feature available after login."}
+
+    content = await image.read()
+    if len(content) > MAX_IMAGE_BYTES:
+        return {"allowed": False, "blocked_reason": "File Too Large",
+                "final_response": "That image is larger than the 8MB limit — try a smaller file."}
+
+    # Reuse the same text-safety checks on the accompanying question.
+    auto_blocked, block_category = blocklist.check_auto_block(question)
+    if auto_blocked:
+        return {"allowed": False, "blocked_reason": block_category,
+                "final_response": ("We couldn't process this request because it violates Nexora's "
+                                    "security and safety policies. The request has been stopped "
+                                    "before reaching the AI model.")}
+
+    b64 = base64.b64encode(content).decode()
+    mime = image.content_type or "image/jpeg"
+    answer = providers.vision_complete(question, b64, mime)
+    return {"allowed": True, "llm_called": True, "final_response": answer}
+
+
+# ============================================================================
+# VOICE INPUT -> TEXT  (guest-restricted feature)
+# ============================================================================
+
+@app.post("/api/transcribe")
+async def transcribe_endpoint(
+    is_guest: bool = Form(...),
+    audio: UploadFile = File(...),
+):
+    if is_guest:
+        return {"allowed": False, "blocked_reason": "Guest Restriction",
+                "final_response": "Feature available after login."}
+
+    content = await audio.read()
+    if len(content) > MAX_AUDIO_BYTES:
+        return {"allowed": False, "blocked_reason": "File Too Large", "transcript": ""}
+
+    text = providers.transcribe_audio(content, audio.filename or "audio.webm", audio.content_type or "audio/webm")
+    if not text:
+        return {"allowed": False, "blocked_reason": "Provider Unavailable", "transcript": "",
+                "final_response": "Voice transcription isn't configured yet — add GROQ_API_KEY or HF_API_KEY to your .env."}
+    return {"allowed": True, "transcript": text}
+
+
+# ============================================================================
+# TEXT -> IMAGE GENERATION  (guest-restricted feature)
+# ============================================================================
+
+class ImageGenRequest(BaseModel):
+    prompt: str = Field(..., max_length=2000)
+    is_guest: bool = True
+
+
+@app.post("/api/generate-image")
+def generate_image_endpoint(req: ImageGenRequest):
+    if req.is_guest:
+        return {"allowed": False, "blocked_reason": "Guest Restriction",
+                "final_response": "Feature available after login."}
+
+    auto_blocked, block_category = blocklist.check_auto_block(req.prompt)
+    if auto_blocked:
+        return {"allowed": False, "blocked_reason": block_category,
+                "final_response": ("We couldn't process this request because it violates Nexora's "
+                                    "security and safety policies. The request has been stopped "
+                                    "before reaching the AI model.")}
+
+    img_bytes = providers.generate_image(req.prompt)
+    if not img_bytes:
+        return {"allowed": False, "blocked_reason": "Provider Unavailable",
+                "final_response": ("Image generation isn't available right now — either HF_API_KEY "
+                                    "isn't set, or the model is still warming up on Hugging Face's "
+                                    "shared infrastructure. Try again in about 20 seconds.")}
+
+    return {"allowed": True, "llm_called": True, "image_base64": base64.b64encode(img_bytes).decode(), "mime": "image/png"}
