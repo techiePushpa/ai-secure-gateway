@@ -15,13 +15,37 @@ import time
 import uuid
 import base64
 from typing import Optional, List
+from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from pipeline import classification, injection, jailbreak, pii, risk, blocklist
 import providers
+import auth
+
+_shield_executor = ThreadPoolExecutor(max_workers=4)
+
+
+def run_ml_shield(text: str):
+    """Fire the three Hugging Face shield checks in parallel with a hard
+    timeout, so total added latency is ~max(individual calls), not the sum.
+    Returns (ml_injection, ml_toxicity, ml_pii) — each None if HF_API_KEY
+    isn't set or its call failed/timed out. Zero network calls if no key."""
+    if not providers.HF_API_KEY:
+        return None, None, None
+    f_inj = _shield_executor.submit(providers.ml_prompt_injection, text)
+    f_tox = _shield_executor.submit(providers.ml_toxicity, text)
+    f_pii = _shield_executor.submit(providers.ml_pii_entities, text)
+
+    def _get(f):
+        try:
+            return f.result(timeout=providers.SHIELD_TIMEOUT + 1)
+        except Exception:
+            return None
+
+    return _get(f_inj), _get(f_tox), _get(f_pii)
 
 app = FastAPI(title="Nexora Secure AI Gateway", version="1.0.0")
 
@@ -35,6 +59,16 @@ app.add_middleware(
 )
 
 RESTRICTED_GUEST_FEATURES = {"voice", "image", "file", "personalization", "settings", "document_retrieval"}
+
+
+def get_verified_user(authorization: Optional[str] = Header(None)):
+    """FastAPI dependency: verifies the Bearer token against Auth0, if present.
+    Returns a user dict on success, or None (never raises) — a missing or
+    invalid token just means the request is treated as a guest."""
+    if not authorization or not authorization.lower().startswith("bearer "):
+        return None
+    token = authorization.split(" ", 1)[1].strip()
+    return auth.user_from_claims(auth.verify_token(token))
 
 
 class GatewayRequest(BaseModel):
@@ -57,13 +91,23 @@ def make_stage(n: int, label: str, start: float) -> Stage:
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "service": "nexora-gateway", "version": "1.0.0", "providers": providers.providers_status()}
+    return {"status": "ok", "service": "nexora-gateway", "version": "1.0.0",
+            "providers": providers.providers_status(),
+            "auth0_configured": auth.is_configured()}
+
+
+@app.get("/api/me")
+def me(user: Optional[dict] = Depends(get_verified_user)):
+    if user is None:
+        return {"authenticated": False}
+    return {"authenticated": True, "user": user}
 
 
 @app.post("/api/gateway")
-def gateway(req: GatewayRequest):
+def gateway(req: GatewayRequest, user: Optional[dict] = Depends(get_verified_user)):
     pipeline_start = time.time()
     stages: List[Stage] = []
+    effective_is_guest = user is None
 
     # ---- Stage 1: Input Validation ----
     t0 = time.time()
@@ -74,7 +118,7 @@ def gateway(req: GatewayRequest):
         return _error_response(stages, pipeline_start, "Empty prompt")
 
     # ---- Guest Policy Gate ----
-    if req.is_guest and req.feature in RESTRICTED_GUEST_FEATURES:
+    if effective_is_guest and req.feature in RESTRICTED_GUEST_FEATURES:
         return {
             "allowed": False,
             "llm_called": False,
@@ -122,11 +166,33 @@ def gateway(req: GatewayRequest):
     pii_found = pii.detect_pii(text)
     stages.append(make_stage(5, "Scanning Sensitive Data", t0))
 
+    # ---- ML-backed Prompt Shield (Hugging Face) — runs in parallel, skipped entirely if no HF_API_KEY ----
+    t0 = time.time()
+    ml_injection, ml_toxicity, ml_pii = run_ml_shield(text)
+    if ml_injection and ml_injection.get("detected"):
+        injection_detected = True
+        injection_score = max(injection_score, ml_injection["score"])
+    if ml_pii:
+        existing_types = {p["type"] for p in pii_found}
+        for ent in ml_pii:
+            group = ent["type"].upper()
+            if group in ("PER", "PERSON") and "PERSON_NAME" not in existing_types:
+                pii_found.append({"type": "PERSON_NAME", "count": 1})
+                existing_types.add("PERSON_NAME")
+            elif group in ("ORG",) and "ORGANIZATION" not in existing_types:
+                pii_found.append({"type": "ORGANIZATION", "count": 1})
+                existing_types.add("ORGANIZATION")
+            elif group in ("LOC",) and "LOCATION" not in existing_types:
+                pii_found.append({"type": "LOCATION", "count": 1})
+                existing_types.add("LOCATION")
+    toxicity_score = ml_toxicity if ml_toxicity is not None else max(injection_score, jailbreak_score) // 3
+    stages.append(make_stage(6, "ML Prompt Shield (Hugging Face)" if providers.HF_API_KEY else "ML Prompt Shield (skipped — no HF_API_KEY)", t0))
+
     # ---- Stage 7: Privacy Masking ----
     t0 = time.time()
     masked_text, masked_detected = pii.mask_pii(text)
     privacy_masked = len(masked_detected) > 0
-    stages.append(make_stage(6, "Masking Private Information", t0))
+    stages.append(make_stage(7, "Masking Private Information", t0))
 
     # ---- Stage 2 (classification, uses injection/jailbreak signals) ----
     category = classification.classify(text, injection_detected, jailbreak_detected, bool(pii_found))
@@ -135,19 +201,19 @@ def gateway(req: GatewayRequest):
     # ---- Stage 8: Policy Validation ----
     t0 = time.time()
     policy_passed = not (auto_blocked or injection_detected or jailbreak_detected)
-    stages.append(make_stage(7, "Policy Validation", t0))
+    stages.append(make_stage(8, "Policy Validation", t0))
 
     # ---- Stage 9: Risk Scoring ----
     t0 = time.time()
     risk_score = risk.compute_risk(auto_blocked, injection_score, jailbreak_score, pii_found, category)
     risk_level = "CRITICAL" if auto_blocked else risk.level_for_score(risk_score)
-    stages.append(make_stage(8, "Calculating Risk Score", t0))
+    stages.append(make_stage(9, "Calculating Risk Score", t0))
 
     # ---- Stage 10: Route Decision ----
     t0 = time.time()
     blocked = auto_blocked or injection_detected or jailbreak_detected or risk_level in ("HIGH", "CRITICAL")
     allowed = not blocked
-    stages.append(make_stage(9, "Decision Engine", t0))
+    stages.append(make_stage(10, "Decision Engine", t0))
 
     if blocked:
         reason = block_category if auto_blocked else (
@@ -156,7 +222,7 @@ def gateway(req: GatewayRequest):
             "Elevated Risk Score"
         )
         t0 = time.time()
-        stages.append(make_stage(10, "Blocked — Not Sent to LLM", t0))
+        stages.append(make_stage(11, "Blocked — Not Sent to LLM", t0))
         return {
             "allowed": False,
             "llm_called": False,
@@ -181,6 +247,8 @@ def gateway(req: GatewayRequest):
                 "pii_detected": bool(pii_found),
                 "privacy_masked": privacy_masked,
                 "trust_score": max(0, 100 - risk_score),
+                "toxicity_score": toxicity_score,
+                "shield_engine": "regex+huggingface" if providers.HF_API_KEY else "regex",
                 "processing_time_ms": int((time.time() - pipeline_start) * 1000),
                 "pii_types": [p["type"] for p in pii_found],
             },
@@ -193,20 +261,20 @@ def gateway(req: GatewayRequest):
         kw in text.lower() for kw in ["policy", "document", "our company", "internal"]
     )
     retrieval_source = "ChromaDB: company-knowledge-base" if retrieval_needed else None
-    stages.append(make_stage(11, "Retrieving Context" if retrieval_needed else "Skipping Retrieval", t0))
+    stages.append(make_stage(12, "Retrieving Context" if retrieval_needed else "Skipping Retrieval", t0))
 
     # ---- Stage 12: Forward to LLM ----
     t0 = time.time()
     final_response = providers.chat_complete(masked_text, category)
-    stages.append(make_stage(12, "Sending to LLM", t0))
+    stages.append(make_stage(13, "Sending to LLM", t0))
 
     # ---- Stage 13: Output Verification ----
     t0 = time.time()
     trust_score = max(60, 100 - risk_score - (5 if pii_found else 0))
-    stages.append(make_stage(13, "Verifying Output", t0))
+    stages.append(make_stage(14, "Verifying Output", t0))
 
     # ---- Stage 14: Return Secure Response ----
-    stages.append(make_stage(14, "Response Delivered", time.time()))
+    stages.append(make_stage(15, "Response Delivered", time.time()))
 
     return {
         "allowed": True,
@@ -221,6 +289,7 @@ def gateway(req: GatewayRequest):
         "route_to": "Answer Agent",
         "blocked_reason": None,
         "final_response": final_response,
+        "authenticated_as": user["email"] if user else None,
         "prompt_shield": {
             "status": "SAFE" if risk_level in ("SAFE", "LOW") else risk_level,
             "confidence": max(70, 100 - risk_score),
@@ -230,6 +299,8 @@ def gateway(req: GatewayRequest):
             "pii_detected": bool(pii_found),
             "privacy_masked": privacy_masked,
             "trust_score": trust_score,
+            "toxicity_score": toxicity_score,
+            "shield_engine": "regex+huggingface" if providers.HF_API_KEY else "regex",
             "processing_time_ms": int((time.time() - pipeline_start) * 1000),
             "pii_types": [p["type"] for p in pii_found],
         },
@@ -279,8 +350,9 @@ async def vision_endpoint(
     is_guest: bool = Form(...),
     question: str = Form("Describe this image."),
     image: UploadFile = File(...),
+    user: Optional[dict] = Depends(get_verified_user),
 ):
-    if is_guest:
+    if user is None:
         return {"allowed": False, "blocked_reason": "Guest Restriction",
                 "final_response": "Feature available after login."}
 
@@ -304,6 +376,52 @@ async def vision_endpoint(
 
 
 # ============================================================================
+# OCR — extract text from an image  (guest-restricted feature)
+# ============================================================================
+
+@app.post("/api/ocr")
+async def ocr_endpoint(
+    is_guest: bool = Form(...),
+    image: UploadFile = File(...),
+    user: Optional[dict] = Depends(get_verified_user),
+):
+    if user is None:
+        return {"allowed": False, "blocked_reason": "Guest Restriction",
+                "final_response": "Feature available after login."}
+
+    content = await image.read()
+    if len(content) > MAX_IMAGE_BYTES:
+        return {"allowed": False, "blocked_reason": "File Too Large",
+                "final_response": "That image is larger than the 8MB limit — try a smaller file."}
+
+    text = providers.ocr_image(content, image.content_type or "image/png")
+    if text is None:
+        return {"allowed": False, "blocked_reason": "Provider Unavailable",
+                "final_response": "OCR isn't configured yet — add HF_API_KEY to your .env."}
+    if not text:
+        return {"allowed": True, "llm_called": True, "final_response": "No readable text was found in that image."}
+    return {"allowed": True, "llm_called": True, "final_response": f"**Extracted text:**\n\n```\n{text}\n```"}
+
+
+# ============================================================================
+# EMBEDDINGS — utility endpoint for future retrieval work (not yet wired to
+# a vector store; ChromaDB integration is a planned follow-on piece)
+# ============================================================================
+
+class EmbeddingsRequest(BaseModel):
+    text: str = Field(..., max_length=8000)
+
+
+@app.post("/api/embeddings")
+def embeddings_endpoint(req: EmbeddingsRequest):
+    vector = providers.get_embeddings(req.text)
+    if vector is None:
+        return {"allowed": False, "blocked_reason": "Provider Unavailable",
+                "final_response": "Embeddings aren't configured yet — add HF_API_KEY to your .env."}
+    return {"allowed": True, "embedding": vector, "model": providers.EMBEDDING_MODEL}
+
+
+# ============================================================================
 # VOICE INPUT -> TEXT  (guest-restricted feature)
 # ============================================================================
 
@@ -311,8 +429,9 @@ async def vision_endpoint(
 async def transcribe_endpoint(
     is_guest: bool = Form(...),
     audio: UploadFile = File(...),
+    user: Optional[dict] = Depends(get_verified_user),
 ):
-    if is_guest:
+    if user is None:
         return {"allowed": False, "blocked_reason": "Guest Restriction",
                 "final_response": "Feature available after login."}
 
@@ -337,8 +456,8 @@ class ImageGenRequest(BaseModel):
 
 
 @app.post("/api/generate-image")
-def generate_image_endpoint(req: ImageGenRequest):
-    if req.is_guest:
+def generate_image_endpoint(req: ImageGenRequest, user: Optional[dict] = Depends(get_verified_user)):
+    if user is None:
         return {"allowed": False, "blocked_reason": "Guest Restriction",
                 "final_response": "Feature available after login."}
 

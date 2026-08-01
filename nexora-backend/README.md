@@ -130,3 +130,34 @@ while may fail with a warm-up message. Just try again a few seconds later.
 The injection/jailbreak/PII/blocklist detectors are regex and keyword
 heuristics — solid for demoing the full pipeline honestly, not a substitute
 for a trained safety classifier.
+
+## Auth0 setup
+
+1. Create a free tenant at https://auth0.com if you don't have one.
+2. **Applications → Create Application → Single Page Web Applications.**
+   Do not use a third-party application — its Client ID has a `tpc_`
+   prefix and carries restrictions meant for external partner apps, not
+   your own login screen.
+3. In that application's **Settings**, add to **Allowed Callback URLs**,
+   **Allowed Logout URLs**, and **Allowed Web Origins**: wherever you're
+   serving `nexora-app.html` from (e.g. `http://localhost:5500` if using a
+   local static server, or the exact `file://...` path if opening it
+   directly — check what `window.location.origin` reports in your browser
+   console if unsure).
+4. (Optional, for Google sign-in) **Authentication → Social → Google** —
+   enable it and follow Auth0's steps to connect a Google OAuth app. Once
+   enabled, "Continue with Google" appears automatically on the Universal
+   Login screen, no frontend code changes needed.
+5. Copy the **Domain** and **Client ID** into `.env` as `AUTH0_DOMAIN` and
+   `AUTH0_CLIENT_ID`, and into the `AUTH0_DOMAIN` / `AUTH0_CLIENT_ID`
+   constants near the top of the Auth0 section in `nexora-app.html`.
+6. (Optional, best-practice hardening) **Applications → APIs → Create API**
+   with an identifier like `https://nexora-gateway/api`. Put that identifier
+   in `AUTH0_AUDIENCE` in both `.env` and `nexora-app.html`. Without this,
+   the backend verifies the ID token instead of a scoped access token —
+   still a real signed JWT, just not tied to a specific API.
+
+The backend never trusts a client-supplied "I'm logged in" flag — every
+guest-restricted request (voice, image, OCR, image generation) is gated on
+a real, cryptographically verified Auth0 token, checked server-side against
+your tenant's public keys on every request.
