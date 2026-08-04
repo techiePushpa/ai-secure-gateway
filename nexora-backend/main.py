@@ -17,12 +17,17 @@ import base64
 from typing import Optional, List
 from concurrent.futures import ThreadPoolExecutor
 
+<<<<<<< HEAD
 from fastapi import FastAPI, UploadFile, File, Form, Header, Depends
+=======
+from fastapi import FastAPI, UploadFile, File, Form
+>>>>>>> origin/main
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from pipeline import classification, injection, jailbreak, pii, risk, blocklist
 import providers
+<<<<<<< HEAD
 import auth
 
 _shield_executor = ThreadPoolExecutor(max_workers=4)
@@ -46,6 +51,8 @@ def run_ml_shield(text: str):
             return None
 
     return _get(f_inj), _get(f_tox), _get(f_pii)
+=======
+>>>>>>> origin/main
 
 app = FastAPI(title="Nexora Secure AI Gateway", version="1.0.0")
 
@@ -91,6 +98,7 @@ def make_stage(n: int, label: str, start: float) -> Stage:
 
 @app.get("/api/health")
 def health():
+<<<<<<< HEAD
     return {"status": "ok", "service": "nexora-gateway", "version": "1.0.0",
             "providers": providers.providers_status(),
             "auth0_configured": auth.is_configured()}
@@ -101,6 +109,9 @@ def me(user: Optional[dict] = Depends(get_verified_user)):
     if user is None:
         return {"authenticated": False}
     return {"authenticated": True, "user": user}
+=======
+    return {"status": "ok", "service": "nexora-gateway", "version": "1.0.0", "providers": providers.providers_status()}
+>>>>>>> origin/main
 
 
 @app.post("/api/gateway")
@@ -266,7 +277,11 @@ def gateway(req: GatewayRequest, user: Optional[dict] = Depends(get_verified_use
     # ---- Stage 12: Forward to LLM ----
     t0 = time.time()
     final_response = providers.chat_complete(masked_text, category)
+<<<<<<< HEAD
     stages.append(make_stage(13, "Sending to LLM", t0))
+=======
+    stages.append(make_stage(12, "Sending to LLM", t0))
+>>>>>>> origin/main
 
     # ---- Stage 13: Output Verification ----
     t0 = time.time()
@@ -350,9 +365,14 @@ async def vision_endpoint(
     is_guest: bool = Form(...),
     question: str = Form("Describe this image."),
     image: UploadFile = File(...),
+<<<<<<< HEAD
     user: Optional[dict] = Depends(get_verified_user),
 ):
     if user is None:
+=======
+):
+    if is_guest:
+>>>>>>> origin/main
         return {"allowed": False, "blocked_reason": "Guest Restriction",
                 "final_response": "Feature available after login."}
 
@@ -376,6 +396,7 @@ async def vision_endpoint(
 
 
 # ============================================================================
+<<<<<<< HEAD
 # OCR — extract text from an image  (guest-restricted feature)
 # ============================================================================
 
@@ -422,6 +443,8 @@ def embeddings_endpoint(req: EmbeddingsRequest):
 
 
 # ============================================================================
+=======
+>>>>>>> origin/main
 # VOICE INPUT -> TEXT  (guest-restricted feature)
 # ============================================================================
 
@@ -429,9 +452,14 @@ def embeddings_endpoint(req: EmbeddingsRequest):
 async def transcribe_endpoint(
     is_guest: bool = Form(...),
     audio: UploadFile = File(...),
+<<<<<<< HEAD
     user: Optional[dict] = Depends(get_verified_user),
 ):
     if user is None:
+=======
+):
+    if is_guest:
+>>>>>>> origin/main
         return {"allowed": False, "blocked_reason": "Guest Restriction",
                 "final_response": "Feature available after login."}
 
@@ -456,8 +484,13 @@ class ImageGenRequest(BaseModel):
 
 
 @app.post("/api/generate-image")
+<<<<<<< HEAD
 def generate_image_endpoint(req: ImageGenRequest, user: Optional[dict] = Depends(get_verified_user)):
     if user is None:
+=======
+def generate_image_endpoint(req: ImageGenRequest):
+    if req.is_guest:
+>>>>>>> origin/main
         return {"allowed": False, "blocked_reason": "Guest Restriction",
                 "final_response": "Feature available after login."}
 
