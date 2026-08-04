@@ -1224,8 +1224,60 @@ const AUTH0_CLIENT_ID = 'fxlf7Ingf8kwdYXHigBiBhBOW0Q6AyEt';
 const AUTH0_AUDIENCE = '';
 
 let auth0Client = null;
+let auth0InitError = null;
+let _authReadyResolve;
+const authReady = new Promise(res => { _authReadyResolve = res; });
+
+function loadScriptTag(src){
+  return new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => resolve(true);
+    s.onerror = () => reject(new Error('failed to load ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+async function ensureAuth0Sdk(){
+  if(typeof createAuth0Client !== 'undefined') return true;
+  console.warn('[Nexora] Auth0 SDK not found from the primary CDN — trying fallback mirrors…');
+  const fallbacks = [
+    'https://cdn.jsdelivr.net/npm/@auth0/auth0-spa-js@2/dist/auth0-spa-js.production.js',
+    'https://unpkg.com/@auth0/auth0-spa-js@2/dist/auth0-spa-js.production.js',
+  ];
+  for(const url of fallbacks){
+    try{
+      await loadScriptTag(url);
+      if(typeof createAuth0Client !== 'undefined'){
+        console.log('[Nexora] Auth0 SDK loaded from fallback:', url);
+        return true;
+      }
+    } catch(e){
+      console.warn('[Nexora] fallback failed:', url, e.message);
+    }
+  }
+  return false;
+}
 
 async function initAuth0(){
+  console.log('[Nexora] Current origin (must be in Auth0 Allowed Callback/Logout/Web-Origin URLs):', window.location.origin);
+  if(window.location.protocol === 'file:'){
+    console.warn('[Nexora] This page is open via file:// — Auth0 login will not work. Serve it over http(s) instead, e.g. `python -m http.server 5500`.');
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const authParam = params.get('auth');
+  const hasAuthCallback = params.has('code') && params.has('state');
+
+  const sdkOk = await ensureAuth0Sdk();
+  if(!sdkOk){
+    auth0InitError = 'The Auth0 SDK script could not be loaded from any CDN. This is almost always a network issue (firewall/ad-blocker blocking cdn.auth0.com, jsdelivr.net, and unpkg.com), OR this page is being viewed inside a sandboxed preview instead of a real browser tab — try opening it directly at http://localhost:5500/nexora-app.html in Chrome/Edge.';
+    console.error('[Nexora]', auth0InitError);
+    _authReadyResolve();
+    if(!hasAuthCallback && (authParam === 'login' || authParam === 'signup')){ openAuth(authParam); }
+    return;
+  }
+
   try{
     auth0Client = await createAuth0Client({
       domain: AUTH0_DOMAIN,
@@ -1236,21 +1288,22 @@ async function initAuth0(){
       },
     });
   } catch(e){
-    console.error('Auth0 failed to initialize', e);
+    auth0InitError = (e && e.message) || String(e);
+    console.error('[Nexora] Auth0 failed to initialize:', e);
+    _authReadyResolve();
+    if(!hasAuthCallback && (authParam === 'login' || authParam === 'signup')){ openAuth(authParam); }
     return;
   }
 
-  const params = new URLSearchParams(window.location.search);
-  const hasAuthCallback = params.has('code') && params.has('state');
   if(hasAuthCallback){
     try{ await auth0Client.handleRedirectCallback(); }
-    catch(e){ console.error('Auth0 callback error', e); }
+    catch(e){ console.error('[Nexora] Auth0 callback error', e); auth0InitError = (e && e.message) || String(e); }
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 
   let isAuthenticated = false;
   try{ isAuthenticated = await auth0Client.isAuthenticated(); }
-  catch(e){ console.error('Auth0 isAuthenticated check failed', e); }
+  catch(e){ console.error('[Nexora] Auth0 isAuthenticated check failed', e); }
 
   if(isAuthenticated){
     const profile = await auth0Client.getUser();
@@ -1259,22 +1312,37 @@ async function initAuth0(){
   } else {
     state.isGuest = true;
     state.user = null;
-    const authParam = params.get('auth');
-    if(!hasAuthCallback && (authParam === 'login' || authParam === 'signup')){
-      openAuth(authParam);
-      return;
-    }
   }
   updateGuestUI();
+  _authReadyResolve();
+
+  if(!hasAuthCallback && !isAuthenticated && (authParam === 'login' || authParam === 'signup')){
+    openAuth(authParam);
+  }
 }
 
-function openAuth(type){
-  if(!auth0Client){ showToast('Still connecting to Auth0 — try again in a second.'); return; }
+async function openAuth(type){
+  if(!auth0Client && !auth0InitError){
+    // initAuth0() may not have resolved yet (e.g. button clicked immediately on page load) — wait briefly.
+    await Promise.race([authReady, new Promise(r => setTimeout(r, 5000))]);
+  }
+  if(auth0InitError){
+    showToast('Auth0 setup problem: ' + auth0InitError);
+    console.error('[Nexora] Auth0 is not working. Current origin:', window.location.origin, '| Error:', auth0InitError);
+    return;
+  }
+  if(!auth0Client){
+    showToast('Still connecting to Auth0 — try again in a moment.');
+    return;
+  }
   auth0Client.loginWithRedirect({
     authorizationParams: {
       screen_hint: type === 'signup' ? 'signup' : 'login',
       ...(AUTH0_AUDIENCE ? { audience: AUTH0_AUDIENCE } : {}),
     },
+  }).catch(e => {
+    console.error('loginWithRedirect failed', e);
+    showToast('Could not start login — see the browser console for details.');
   });
 }
 
