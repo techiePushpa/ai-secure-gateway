@@ -265,12 +265,8 @@
                   </span>
                 </button>
                 <div id="uploadMenu" class="hidden absolute bottom-full mb-2 left-0 w-56 glass-strong rounded-2xl p-1.5 shadow-2xl pop-in">
-<<<<<<< HEAD
                   <button onclick="triggerImagePicker('vision')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Upload image (ask about it)</button>
                   <button onclick="triggerImagePicker('ocr')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7V5a2 2 0 012-2h2M4 17v2a2 2 0 002 2h2M20 7V5a2 2 0 00-2-2h-2M20 17v2a2 2 0 01-2 2h-2M7 9h10M7 13h6"/></svg>Extract text (OCR)</button>
-=======
-                  <button onclick="triggerImagePicker()" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Upload image (ask about it)</button>
->>>>>>> origin/main
                   <button onclick="startImageGen()" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>Generate an image</button>
                   <div class="h-px bg-white/10 my-1.5"></div>
                   <button onclick="mockUpload('PDF')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>PDF</button>
@@ -1037,13 +1033,9 @@ function mockUpload(kind){
   document.getElementById('uploadMenu').classList.add('hidden');
   showToast(kind + ' analysis isn\'t wired to a real parser yet — image upload and generation are live though.');
 }
-<<<<<<< HEAD
 let pendingImageMode = 'vision';
 function triggerImagePicker(mode){
   pendingImageMode = mode || 'vision';
-=======
-function triggerImagePicker(){
->>>>>>> origin/main
   document.getElementById('uploadMenu').classList.add('hidden');
   document.getElementById('imageFileInput').click();
 }
@@ -1069,26 +1061,16 @@ async function handleImageFileSelected(event){
   if(!file.type.startsWith('image/')){ showToast('Please choose an image file'); return; }
   if(file.size > 8*1024*1024){ showToast('Image is larger than the 8MB limit'); return; }
 
-<<<<<<< HEAD
   const mode = pendingImageMode;
   const dataUrl = await fileToDataURL(file);
   const input = document.getElementById('composerInput');
   const question = mode === 'ocr' ? 'Extract the text from this image.' : (input.value.trim() || 'Describe this image.');
-=======
-  const dataUrl = await fileToDataURL(file);
-  const input = document.getElementById('composerInput');
-  const question = input.value.trim() || 'Describe this image.';
->>>>>>> origin/main
   input.value = ''; autoGrow(input); toggleSendBtn();
 
   const conv = activeConv();
   const userMsg = { id:'m'+Date.now(), role:'user', text: question, image: dataUrl, ts: Date.now() };
   conv.messages.push(userMsg);
-<<<<<<< HEAD
   if(conv.messages.filter(m=>m.role==='user').length === 1){ conv.title = (mode==='ocr'?'OCR: ':'Image: ') + (question.length>30 ? question.slice(0,30)+'…' : question); }
-=======
-  if(conv.messages.filter(m=>m.role==='user').length === 1){ conv.title = 'Image: ' + (question.length>30 ? question.slice(0,30)+'…' : question); }
->>>>>>> origin/main
   conv.updated = Date.now();
   renderMessages(); renderConversations();
 
@@ -1096,11 +1078,7 @@ async function handleImageFileSelected(event){
   conv.messages.push(typingMsg);
   renderMessages();
 
-<<<<<<< HEAD
   const result = mode === 'ocr' ? await produceOcrReply(file) : await produceVisionReply(file, question);
-=======
-  const result = await produceVisionReply(file, question);
->>>>>>> origin/main
   conv.messages = conv.messages.filter(m=>m.role!=='typing');
   conv.messages.push({ id:'m'+Date.now(), role:'assistant', text: result.text, ts: Date.now(), liked:null, blocked: result.blocked });
   conv.updated = Date.now();
@@ -1112,17 +1090,12 @@ async function produceVisionReply(file, question){
     fd.append('is_guest', String(state.isGuest));
     fd.append('question', question);
     fd.append('image', file);
-<<<<<<< HEAD
     const res = await fetchWithTimeout(BACKEND_URL + '/api/vision', { method:'POST', headers: await authHeader(), body: fd }, 30000);
-=======
-    const res = await fetchWithTimeout(BACKEND_URL + '/api/vision', { method:'POST', body: fd }, 30000);
->>>>>>> origin/main
     const data = await res.json();
     backendOnline = true; updateConnectionUI();
     return { text: data.final_response || 'No response from the vision model.', blocked: !data.allowed };
   } catch(e){
     backendOnline = false; updateConnectionUI();
-<<<<<<< HEAD
     return { text: "Image understanding needs the backend running with `OPENROUTER_API_KEY` or `GROQ_API_KEY` set — there's no local fallback for vision.", blocked: false };
   }
 }
@@ -1138,20 +1111,13 @@ async function produceOcrReply(file){
   } catch(e){
     backendOnline = false; updateConnectionUI();
     return { text: "OCR needs the backend running with `HF_API_KEY` set — there's no local fallback for this one.", blocked: false };
-=======
-    return { text: "Image understanding needs the backend running with `GROQ_API_KEY` or `OPENROUTER_API_KEY` set — there's no local fallback for vision.", blocked: false };
->>>>>>> origin/main
   }
 }
 async function produceImageGenReply(prompt){
   if(!prompt){ return { text: 'Tell me what to generate — for example: `/image a lighthouse at sunset, watercolor style`', blocked: false }; }
   try{
     const res = await fetchWithTimeout(BACKEND_URL + '/api/generate-image', {
-<<<<<<< HEAD
       method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, await authHeader()),
-=======
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
->>>>>>> origin/main
       body: JSON.stringify({ prompt, is_guest: state.isGuest }),
     }, 45000);
     const data = await res.json();
@@ -1203,11 +1169,7 @@ async function sendAudioForTranscription(blob){
     const fd = new FormData();
     fd.append('is_guest', String(state.isGuest));
     fd.append('audio', blob, 'recording.webm');
-<<<<<<< HEAD
     const res = await fetchWithTimeout(BACKEND_URL + '/api/transcribe', { method:'POST', headers: await authHeader(), body: fd }, 30000);
-=======
-    const res = await fetchWithTimeout(BACKEND_URL + '/api/transcribe', { method:'POST', body: fd }, 30000);
->>>>>>> origin/main
     const data = await res.json();
     backendOnline = true; updateConnectionUI();
     if(data.allowed && data.transcript){ return data.transcript; }

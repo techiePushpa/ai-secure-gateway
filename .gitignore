@@ -3,8 +3,6 @@
 # ============================================================
 
 # ---- Secrets — never commit these ----
-# Ignore environment files
-*.env
 .env
 .env.*
 !.env.example
