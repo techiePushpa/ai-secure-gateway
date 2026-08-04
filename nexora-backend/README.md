@@ -130,7 +130,6 @@ while may fail with a warm-up message. Just try again a few seconds later.
 The injection/jailbreak/PII/blocklist detectors are regex and keyword
 heuristics — solid for demoing the full pipeline honestly, not a substitute
 for a trained safety classifier.
-<<<<<<< HEAD
 
 ## Auth0 setup
 
@@ -162,5 +161,3 @@ The backend never trusts a client-supplied "I'm logged in" flag — every
 guest-restricted request (voice, image, OCR, image generation) is gated on
 a real, cryptographically verified Auth0 token, checked server-side against
 your tenant's public keys on every request.
-=======
->>>>>>> origin/main
