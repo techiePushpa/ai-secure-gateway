@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
+<script src="auth0-spa-js.production.js" onerror="console.error('[Nexora] ⚠️ FAILED to load auth0-spa-js.production.js — this file must sit in the SAME FOLDER as this HTML file. Check for typos or that it was actually downloaded.')" onload="console.log('[Nexora] ✅ auth0-spa-js.production.js loaded successfully from same folder.')"></script>
 <script>
   tailwind.config = { darkMode: 'class', theme: { extend: {
     fontFamily: {
@@ -414,6 +414,7 @@ Want me to compare a couple of specific vector database options next?`, ts: Date
 
 /* ============================= INIT ============================= */
 async function init(){
+  console.log('[Nexora] app.html build marker: 2026-08-05-local-sdk-v1');
   state.activeId = state.conversations[0].id;
   renderConversations();
   renderMessages();
@@ -1239,7 +1240,7 @@ function loadScriptTag(src){
 }
 
 async function ensureAuth0Sdk(){
-  if(typeof createAuth0Client !== 'undefined') return true;
+  if(typeof auth0 !== 'undefined' && typeof auth0.createAuth0Client !== 'undefined') return true;
   console.warn('[Nexora] Auth0 SDK not found from the primary CDN — trying fallback mirrors…');
   const fallbacks = [
     'https://cdn.jsdelivr.net/npm/@auth0/auth0-spa-js@2/dist/auth0-spa-js.production.js',
@@ -1248,7 +1249,7 @@ async function ensureAuth0Sdk(){
   for(const url of fallbacks){
     try{
       await loadScriptTag(url);
-      if(typeof createAuth0Client !== 'undefined'){
+      if(typeof auth0 !== 'undefined' && typeof auth0.createAuth0Client !== 'undefined'){
         console.log('[Nexora] Auth0 SDK loaded from fallback:', url);
         return true;
       }
@@ -1279,7 +1280,7 @@ async function initAuth0(){
   }
 
   try{
-    auth0Client = await createAuth0Client({
+    auth0Client = await auth0.createAuth0Client({
       domain: AUTH0_DOMAIN,
       clientId: AUTH0_CLIENT_ID,
       authorizationParams: {
