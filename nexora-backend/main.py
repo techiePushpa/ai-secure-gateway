@@ -20,10 +20,12 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, UploadFile, File, Form, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
-from pipeline import classification, injection, jailbreak, pii, risk, blocklist
+from pipeline import classification, injection, jailbreak, pii, risk, blocklist, documents
 import providers
 import auth
+import db as dbmod
 
 _shield_executor = ThreadPoolExecutor(max_workers=4)
 
@@ -61,14 +63,30 @@ app.add_middleware(
 RESTRICTED_GUEST_FEATURES = {"voice", "image", "file", "personalization", "settings", "document_retrieval"}
 
 
+@app.on_event("startup")
+def on_startup():
+    try:
+        dbmod.init_db()
+        if dbmod.is_configured():
+            print("[db] Connected — tables ready.")
+        else:
+            print("[db] DATABASE_URL not set — conversations will not be persisted.")
+    except Exception as e:
+        print(f"[db] Startup init failed (persistence disabled): {e}")
+
+
 def get_verified_user(authorization: Optional[str] = Header(None)):
     """FastAPI dependency: verifies the Bearer token against Auth0, if present.
     Returns a user dict on success, or None (never raises) — a missing or
     invalid token just means the request is treated as a guest."""
     if not authorization or not authorization.lower().startswith("bearer "):
+        print("[auth] No Authorization header on this request — treated as guest.")
         return None
     token = authorization.split(" ", 1)[1].strip()
-    return auth.user_from_claims(auth.verify_token(token))
+    claims = auth.verify_token(token)
+    if claims is None:
+        print("[auth] Authorization header present but token failed verification — treated as guest.")
+    return auth.user_from_claims(claims)
 
 
 class GatewayRequest(BaseModel):
@@ -401,6 +419,57 @@ async def ocr_endpoint(
     if not text:
         return {"allowed": True, "llm_called": True, "final_response": "No readable text was found in that image."}
     return {"allowed": True, "llm_called": True, "final_response": f"**Extracted text:**\n\n```\n{text}\n```"}
+
+
+# ============================================================================
+# DOCUMENT UPLOAD -> TEXT EXTRACTION + CHAT  (guest-restricted feature)
+# PDF, Word (.docx), CSV, plain text, Markdown
+# ============================================================================
+
+MAX_DOC_BYTES = 15 * 1024 * 1024   # 15MB
+MAX_DOC_CHARS = 12000               # cap what actually reaches the model
+
+
+@app.post("/api/document")
+async def document_endpoint(
+    is_guest: bool = Form(...),
+    question: str = Form("Summarize this document."),
+    file: UploadFile = File(...),
+    user: Optional[dict] = Depends(get_verified_user),
+):
+    if user is None:
+        return {"allowed": False, "blocked_reason": "Guest Restriction",
+                "final_response": "Feature available after login."}
+
+    content = await file.read()
+    if len(content) > MAX_DOC_BYTES:
+        return {"allowed": False, "blocked_reason": "File Too Large",
+                "final_response": "That file is larger than the 15MB limit — try a smaller one."}
+
+    auto_blocked, block_category = blocklist.check_auto_block(question)
+    if auto_blocked:
+        return {"allowed": False, "blocked_reason": block_category,
+                "final_response": ("We couldn't process this request because it violates Nexora's "
+                                    "security and safety policies. The request has been stopped "
+                                    "before reaching the AI model.")}
+
+    filename = file.filename or "document"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in documents.SUPPORTED_EXTENSIONS:
+        return {"allowed": False, "blocked_reason": "Unsupported File Type",
+                "final_response": f"'.{ext}' isn't supported yet — try PDF, Word (.docx), CSV, .txt, or .md."}
+
+    extracted = documents.extract_text(content, filename)
+    truncated = len(extracted) > MAX_DOC_CHARS
+    if truncated:
+        extracted = extracted[:MAX_DOC_CHARS]
+
+    prompt = f"Document: {filename}\n\n{extracted}\n\n---\nQuestion: {question}"
+    answer = providers.chat_complete(prompt, "File")
+    if truncated:
+        answer += "\n\n*(Note: this document was long — only the first ~12,000 characters were analyzed.)*"
+
+    return {"allowed": True, "llm_called": True, "final_response": answer}
 
 
 # ============================================================================
