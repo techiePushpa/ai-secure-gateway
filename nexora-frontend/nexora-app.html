@@ -269,13 +269,14 @@
                   <button onclick="triggerImagePicker('ocr')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7V5a2 2 0 012-2h2M4 17v2a2 2 0 002 2h2M20 7V5a2 2 0 00-2-2h-2M20 17v2a2 2 0 01-2 2h-2M7 9h10M7 13h6"/></svg>Extract text (OCR)</button>
                   <button onclick="startImageGen()" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>Generate an image</button>
                   <div class="h-px bg-white/10 my-1.5"></div>
-                  <button onclick="mockUpload('PDF')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>PDF</button>
-                  <button onclick="mockUpload('Word document')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Word</button>
-                  <button onclick="mockUpload('Text file')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Text</button>
-                  <button onclick="mockUpload('CSV')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg>CSV</button>
-                  <button onclick="mockUpload('Markdown file')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Markdown</button>
+                  <button onclick="triggerDocPicker('.pdf')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>PDF</button>
+                  <button onclick="triggerDocPicker('.docx')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Word</button>
+                  <button onclick="triggerDocPicker('.txt')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Text</button>
+                  <button onclick="triggerDocPicker('.csv')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg>CSV</button>
+                  <button onclick="triggerDocPicker('.md,.markdown')" class="w-full text-left px-3 py-2 rounded-lg text-xs text-main hover:bg-white/5 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Markdown</button>
                 </div>
                 <input type="file" id="imageFileInput" accept="image/*" class="hidden" onchange="handleImageFileSelected(event)" />
+                <input type="file" id="docFileInput" class="hidden" onchange="handleDocFileSelected(event)" />
               </div>
 
               <textarea id="composerInput" rows="1" placeholder="Ask Nexora anything..." class="flex-1 resize-none bg-transparent outline-none text-sm text-main placeholder:text-muted/70 py-2.5 max-h-40" oninput="autoGrow(this); toggleSendBtn();" onkeydown="onComposerKeydown(event)"></textarea>
@@ -1030,9 +1031,53 @@ function onUploadClick(){
   if(state.isGuest){ showUpsell('Sign up to upload files', 'File uploads (images, PDFs, Word, CSV, and more) are available once you create a free Nexora account.'); return; }
   toggleDropdown('uploadMenu');
 }
-function mockUpload(kind){
+function triggerDocPicker(accept){
   document.getElementById('uploadMenu').classList.add('hidden');
-  showToast(kind + ' analysis isn\'t wired to a real parser yet — image upload and generation are live though.');
+  const input = document.getElementById('docFileInput');
+  input.accept = accept;
+  input.click();
+}
+async function handleDocFileSelected(event){
+  const file = event.target.files[0];
+  event.target.value = '';
+  if(!file) return;
+  if(file.size > 15*1024*1024){ showToast('File is larger than the 15MB limit'); return; }
+
+  const input = document.getElementById('composerInput');
+  const question = input.value.trim() || 'Summarize this document.';
+  input.value = ''; autoGrow(input); toggleSendBtn();
+
+  const conv = activeConv();
+  const userMsg = { id:'m'+Date.now(), role:'user', text: `📎 ${file.name}\n${question}`, ts: Date.now() };
+  conv.messages.push(userMsg);
+  if(conv.messages.filter(m=>m.role==='user').length === 1){ conv.title = file.name.length>30 ? file.name.slice(0,30)+'…' : file.name; }
+  conv.updated = Date.now();
+  renderMessages(); renderConversations();
+
+  const typingMsg = { id:'typing-'+Date.now(), role:'typing' };
+  conv.messages.push(typingMsg);
+  renderMessages();
+
+  const result = await produceDocReply(file, question);
+  conv.messages = conv.messages.filter(m=>m.role!=='typing');
+  conv.messages.push({ id:'m'+Date.now(), role:'assistant', text: result.text, ts: Date.now(), liked:null, blocked: result.blocked });
+  conv.updated = Date.now();
+  renderMessages(); renderConversations();
+}
+async function produceDocReply(file, question){
+  try{
+    const fd = new FormData();
+    fd.append('is_guest', String(state.isGuest));
+    fd.append('question', question);
+    fd.append('file', file);
+    const res = await fetchWithTimeout(BACKEND_URL + '/api/document', { method:'POST', headers: await authHeader(), body: fd }, 45000);
+    const data = await res.json();
+    backendOnline = true; updateConnectionUI();
+    return { text: data.final_response || 'No response from the document analyzer.', blocked: !data.allowed };
+  } catch(e){
+    backendOnline = false; updateConnectionUI();
+    return { text: "Document upload needs the backend running (with `GROQ_API_KEY` or `OPENROUTER_API_KEY` set) — there's no local fallback for this one.", blocked: false };
+  }
 }
 let pendingImageMode = 'vision';
 function triggerImagePicker(mode){
@@ -1283,6 +1328,7 @@ async function initAuth0(){
     auth0Client = await auth0.createAuth0Client({
       domain: AUTH0_DOMAIN,
       clientId: AUTH0_CLIENT_ID,
+      cacheLocation: 'localstorage',
       authorizationParams: {
         redirect_uri: window.location.origin + window.location.pathname,
         ...(AUTH0_AUDIENCE ? { audience: AUTH0_AUDIENCE } : {}),
@@ -1348,17 +1394,20 @@ async function openAuth(type){
 }
 
 async function getAuthToken(){
-  if(!auth0Client) return null;
+  if(!auth0Client){ console.warn('[Nexora] getAuthToken: auth0Client not initialized yet'); return null; }
   try{
     const isAuthenticated = await auth0Client.isAuthenticated();
-    if(!isAuthenticated) return null;
+    if(!isAuthenticated){ console.warn('[Nexora] getAuthToken: auth0Client says not authenticated'); return null; }
     if(AUTH0_AUDIENCE){
-      return await auth0Client.getTokenSilently({ authorizationParams: { audience: AUTH0_AUDIENCE } });
+      const tok = await auth0Client.getTokenSilently({ authorizationParams: { audience: AUTH0_AUDIENCE } });
+      console.log('[Nexora] getAuthToken: got access token, length', tok ? tok.length : 0);
+      return tok;
     }
     const claims = await auth0Client.getIdTokenClaims();
+    console.log('[Nexora] getAuthToken: got ID token?', !!(claims && claims.__raw));
     return claims ? claims.__raw : null;
   } catch(e){
-    console.error('getAuthToken failed', e);
+    console.error('[Nexora] getAuthToken failed', e);
     return null;
   }
 }
